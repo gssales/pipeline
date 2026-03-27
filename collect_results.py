@@ -68,6 +68,31 @@ def find_scene_dirs(base_path: Path):
                 scene_dirs.extend(sub)
     return scene_dirs
 
+def parse_usage(base_path: Path):
+    peak_ram, peak_vram = 0.0, 0.0
+    mean_ram, mean_vram = 0.0, 0.0
+    count = 0
+    if (base_path / "usage.csv").exists():
+        with open(base_path / "usage.csv", "r") as f:
+            reader = csv.reader(f)
+            next(reader)  # Skip header
+            for row in reader:
+                if len(row) < 3:
+                    continue
+                try:
+                    ram = float(row[1].replace(",", "."))
+                    vram = float(row[2].replace(",", "."))
+                    peak_ram = max(peak_ram, ram)
+                    peak_vram = max(peak_vram, vram)
+                    mean_ram += ram
+                    mean_vram += vram
+                    count += 1
+                except ValueError:
+                    continue
+    if count > 0:
+        mean_ram /= count
+        mean_vram /= count
+    return peak_ram, peak_vram, mean_ram, mean_vram
 
 def main():
     parser = ArgumentParser(description="Collect PSNR/SSIM/LPIPS + FPS into a CSV across all scenes.")
@@ -117,6 +142,8 @@ def main():
         ssim = entry.get("SSIM", "")
         lpips = entry.get("LPIPS", "")
 
+        peak_ram, peak_vram, mean_ram, mean_vram = parse_usage(scene_dir)
+
         rows.append({
             "scene": str(scene_dir.relative_to(output_root)),
             "key": best_key,
@@ -125,6 +152,10 @@ def main():
             "LPIPS": str(lpips).replace(".", ","),
             "fps": str(fps_value).replace(".", ","),
             "count": count_value,
+            "peak_ram": str(peak_ram).replace(".", ","),
+            "peak_vram": str(peak_vram).replace(".", ","),
+            "mean_ram": str(mean_ram).replace(".", ","),
+            "mean_vram": str(mean_vram).replace(".", ","),
         })
 
     # Write table
