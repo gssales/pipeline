@@ -104,6 +104,10 @@ def training(args, eval_dir, scenes, datasets, parameters):
     dataset_scene = scene.parent.name + "/" + scene.name
 
     output_path = Path(parameters["base_path"], eval_dir, dataset_scene)
+    if (output_path / "point_cloud").exists():
+      print(f"Output for {dataset_scene} already exists. Skipping training.")
+      continue
+
     train_command = f"{parameters['conda_env']}/python train.py -s {scene} -m {output_path} {train_args}"
 
     if args.dry_run:
@@ -130,7 +134,8 @@ def training(args, eval_dir, scenes, datasets, parameters):
 
     progress.update(1)
   progress.close()
-  with open(os.path.join(parameters["base_path"], eval_dir, "timing.json"), 'w') as file:
+  timing_name = "timing_" + time.strftime("%Y%m%d-%H%M%S") + ".json"
+  with open(os.path.join(parameters["base_path"], eval_dir, timing_name), 'w') as file:
     json.dump(scene_times, file, indent=True)
 
 
