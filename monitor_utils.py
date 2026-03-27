@@ -7,7 +7,38 @@ try:
 except Exception:
   NVML_AVAILABLE = False
 
-def get_vram_usage(pid):
+def get_vram_procs():
+  """Return list of pid for processes using VRAM on the same GPU as the given PID."""
+  if not NVML_AVAILABLE:
+    return []
+
+  procs = []
+  try:
+    device_count = nvmlDeviceGetCount()
+    for i in range(device_count):
+      handle = nvmlDeviceGetHandleByIndex(i)
+
+      # Running compute processes
+      try:
+        procs = nvmlDeviceGetComputeRunningProcesses(handle)
+      except:
+        procs = []
+
+      # Some drivers require this too
+      try:
+        procs += nvmlDeviceGetGraphicsRunningProcesses(handle)
+      except:
+        pass
+
+      for p in procs:
+        procs.append(p.pid)
+
+  except Exception:
+      pass
+
+  return procs
+
+def get_vram_usage(active_pids):
   """Return VRAM usage in MB for a given PID (if available)."""
   if not NVML_AVAILABLE:
     return 0
@@ -31,7 +62,7 @@ def get_vram_usage(pid):
         pass
 
       for p in procs:
-        if p.pid == pid:
+        if p.pid not in active_pids:
           vram += p.usedGpuMemory / (1024 ** 2)
 
   except Exception:
@@ -40,7 +71,7 @@ def get_vram_usage(pid):
   return vram
 
 
-def monitor(pid, stop_event, interval=1.0, log_file=None):
+def monitor(pid, stop_event, vram_pids, interval=1.0, log_file=None):
   process = psutil.Process(pid)
 
   f = open(log_file, "w") if log_file else None
@@ -59,7 +90,7 @@ def monitor(pid, stop_event, interval=1.0, log_file=None):
       ram = process.memory_info().rss / (1024 ** 2)
 
       # VRAM
-      vram = get_vram_usage(pid)
+      vram = get_vram_usage(vram_pids)
 
       peak_ram = max(peak_ram, ram)
       peak_vram = max(peak_vram, vram)

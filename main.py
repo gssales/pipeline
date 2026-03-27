@@ -19,7 +19,7 @@ from tqdm import tqdm
 import psutil
 import shlex
 
-from monitor_utils import monitor
+from monitor_utils import get_vram_procs, monitor
 from process_utils import ProcessManager
 
 pm = ProcessManager()
@@ -115,11 +115,13 @@ def training(args, eval_dir, scenes, datasets, parameters):
     with open(os.path.join(output_path, "commands.sh"), 'w') as file:
       file.write(train_command+ "\n")
 
-    print("")
+    active_gpu_procs = get_vram_procs()
+
+    print("\n")
     scene_time = time.time()
     process = psutil.Popen(shlex.split(train_command), cwd=parameters["script_path"], shell=False)
     pm.process = process
-    pm.start_monitor(monitor, process.pid, 1.0, os.path.join(output_path, "usage.csv"))
+    pm.start_monitor(monitor, process.pid, active_gpu_procs, 1.0, os.path.join(output_path, "usage.csv"))
     try:
       process.wait()
     finally:
