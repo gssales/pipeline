@@ -1,0 +1,10 @@
+base_path: "E:/output/3dgs"
+conda_env: "E:/conda/envs/gaussian_splatting"
+script_path: "E:/Research/projects/gaussian-splatting"
+parameters:
+  training: 
+    base: " --disable_viewer --quiet --eval --test_iterations -1 --save_iterations 30000"
+    real: " -r 4"
+  rendering: 
+    base: " --quiet --eval --skip_train --iteration 30000"
+args: []

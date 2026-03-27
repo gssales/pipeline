@@ -1,0 +1,21 @@
+base_path: "E:/output/ours"
+conda_env: "E:/conda/envs/gs_reflection"
+script_path: "E:/Research/projects/gaussian_splatting_reflection"
+mae_eval_datasets:
+  - "shiny_blender"
+parameters:
+  training: 
+    base: " --disable_viewer --quiet --eval --test_iterations -1"
+    real: " -r 4 --init_until_iter 3000 --iteration 65000 --longer_prop_iter 15000"
+    synthetic: " -w --init_until_iter 20 --iteration 35000"
+  rendering: 
+    base: " --quiet --eval --skip_train"
+    real: " --iteration 65000 --start_checkpoint chkpnt65000.pth"
+    synthetic: " --iteration 35000 --render_normals --start_checkpoint chkpnt35000.pth"
+args:
+  ref_real/sedan: " --use_env_scope --env_scope_center -0.032 0.808 0.751 --env_scope_radius 2.138"
+  ref_real/gardenspheres: " --use_env_scope --env_scope_center -0.2270 1.9700 1.7740 --env_scope_radius 0.974"
+  ref_real/toycar: " --use_env_scope --env_scope_center 0.486 1.108 3.72 --env_scope_radius 2.507"
+  envgs/audi: " --use_env_scope --env_scope_center -0.032 0.808 0.751 --env_scope_radius 4"
+  envgs/dog: " --use_env_scope --env_scope_center -0.2270 1.9700 1.7740 --env_scope_radius 5"
+  tant_intermediate/Family: " --use_env_scope --env_scope_center -0.032 0.808 0.751 --env_scope_radius 2.138"

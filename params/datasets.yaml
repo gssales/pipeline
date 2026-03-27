@@ -1,0 +1,10 @@
+data:
+  base_path: "E:/Research/data"
+  real_datasets:
+    - ref_real
+    - envgs
+    - tandt_intermediate
+  synthetic_datasets:
+    - shiny_blender
+    - GlossySynthetic
+    - nerf_synthetic
