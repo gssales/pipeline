@@ -1,5 +1,5 @@
 data:
-  base_path: /mnt/data"
+  base_path: "/mnt/data"
   real_datasets:
     - ref_real
     - envgs

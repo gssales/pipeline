@@ -13,11 +13,11 @@ import json
 import os
 from argparse import ArgumentParser
 from pathlib import Path
-import threading
 import time
 import yaml
 from tqdm import tqdm
 import psutil
+import shlex
 
 from monitor_utils import monitor
 from process_utils import ProcessManager
@@ -117,7 +117,7 @@ def training(args, eval_dir, scenes, datasets, parameters):
 
     print("")
     scene_time = time.time()
-    process = psutil.Popen(train_command, cwd=parameters["script_path"], shell=False)
+    process = psutil.Popen(shlex.split(train_command), cwd=parameters["script_path"], shell=False)
     pm.process = process
     pm.start_monitor(monitor, process.pid, 1.0, os.path.join(output_path, "usage.csv"))
     try:
