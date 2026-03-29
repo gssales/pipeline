@@ -22,9 +22,6 @@ import shlex
 from monitor_utils import get_vram_procs, monitor
 from process_utils import ProcessManager
 
-pm = ProcessManager()
-pm.register_signal_handlers()
-
 # Load datasets and parameters
 def read_scenes(dataset_path: Path):
   scenes = []
@@ -118,6 +115,9 @@ def training(args, eval_dir, scenes, datasets, parameters):
     output_path.mkdir(parents=True, exist_ok=True)
     with open(os.path.join(output_path, "commands.sh"), 'w') as file:
       file.write(train_command+ "\n")
+
+    pm = ProcessManager()
+    pm.register_signal_handlers()
 
     active_gpu_procs = get_vram_procs()
 

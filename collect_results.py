@@ -160,7 +160,7 @@ def main():
 
     # Write table
     delimiter = "\t" if args.tsv else ","
-    fieldnames = ["scene", "key", "PSNR", "SSIM", "LPIPS", "fps", "count"]
+    fieldnames = ["scene", "key", "PSNR", "SSIM", "LPIPS", "fps", "count", "peak_ram", "peak_vram", "mean_ram", "mean_vram"]
 
     out_file.parent.mkdir(parents=True, exist_ok=True)
     with open(out_file, "w", newline="", encoding="utf-8") as f:
