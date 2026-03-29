@@ -100,7 +100,7 @@ def training(args, eval_dir, scenes, datasets, parameters):
     train_args = get_dataset_args(dataset, "training", datasets, parameters) + common_args
     dataset_scene = scene.parent.name + "/" + scene.name
 
-    output_path = Path(parameters["base_path"], eval_dir, dataset_scene)
+    output_path = Path(eval_dir, dataset_scene)
     if (output_path / "point_cloud").exists():
       print(f"Output for {dataset_scene} already exists. Skipping training.")
       continue
@@ -135,7 +135,7 @@ def training(args, eval_dir, scenes, datasets, parameters):
     progress.update(1)
   progress.close()
   timing_name = "timing_" + time.strftime("%Y%m%d-%H%M%S") + ".json"
-  with open(os.path.join(parameters["base_path"], eval_dir, timing_name), 'w') as file:
+  with open(os.path.join(eval_dir, timing_name), 'w') as file:
     json.dump(scene_times, file, indent=True)
 
 
@@ -155,7 +155,7 @@ def rendering(args, eval_dir, scenes, datasets, parameters):
     render_args = get_dataset_args(dataset, "rendering", datasets, parameters) + common_args
       
     dataset_scene = scene.parent.name + "/" + scene.name
-    output_path = Path(parameters["base_path"], eval_dir, dataset_scene)
+    output_path = Path(eval_dir, dataset_scene)
     render_command = f"{parameters['conda_env']}/python render.py -s {scene} -m {output_path} {render_args}"
     
     if args.dry_run:
@@ -189,7 +189,7 @@ def mae_evaluation(args, eval_dir, scenes, parameters):
     progress.set_description(f"MAE Evaluation {scene.parent.name}/{scene.name}")
     
     dataset_scene = scene.parent.name + "/" + scene.name
-    output_path = Path(parameters["base_path"], eval_dir, dataset_scene, "test")
+    output_path = Path(eval_dir, dataset_scene, "test")
     mae_command = f"{parameters['conda_env']}/python eval_mae.py --gt_path {scene} --render_path {output_path}"
   
     if args.dry_run:
@@ -217,7 +217,7 @@ def fps_evaluation(args, eval_dir, scenes, parameters):
     progress.set_description(f"FPS Evaluation {scene.parent.name}/{scene.name}")
 
     dataset_scene = scene.parent.name + "/" + scene.name
-    output_path = Path(parameters["base_path"], eval_dir, dataset_scene)
+    output_path = Path(eval_dir, dataset_scene)
     fps_command = f"{parameters['conda_env']}/python eval_fps.py -s {scene} -m {output_path}"
     
     if args.dry_run:
@@ -243,7 +243,7 @@ def metrics_evaluation(args, eval_dir, scenes, parameters):
   model_paths = ""
   for scene in scenes:
     dataset_scene = scene.parent.name + "/" + scene.name
-    output_path = Path(parameters["base_path"], eval_dir, dataset_scene)
+    output_path = Path(eval_dir, dataset_scene)
     model_paths += f"{output_path} "
 
   metrics_command = f"{parameters['conda_env']}/python metrics.py -m {model_paths}"
@@ -258,8 +258,7 @@ def metrics_evaluation(args, eval_dir, scenes, parameters):
 ##################
 #   COLLECTING   #
 ##################
-def collect_results(args, eval_dir, parameters):
-  output_path = Path(parameters["base_path"], eval_dir)
+def collect_results(output_path):
   print("Collecting results in:", output_path)
   collect_command = "python collect_results.py --tsv --output_path " + str(output_path)
   os.system(collect_command)
@@ -273,10 +272,10 @@ def render_videos(args, eval_dir, parameters):
 
 def pipeline(args):
   
-  eval_dir = args.output_dir if args.output_dir else "eval_" + time.strftime("%Y%m%d-%H%M%S")
-
   scenes, datasets = load_datasets(args)
   params = load_parameters(args.method)
+
+  eval_dir = Path(args.output_dir) if args.output_dir else Path(params["base_path"], "eval_" + time.strftime("%Y%m%d-%H%M%S"))
   
   if not args.skip_training:
     training(args, eval_dir, scenes, datasets, params)
@@ -294,7 +293,7 @@ def pipeline(args):
     mae_evaluation(args, eval_dir, scenes, params)
 
   if not args.skip_collect_results:
-    collect_results(args, eval_dir, params)
+    collect_results(eval_dir)
 
   print("Done with full evaluation for all scenes!")
 
