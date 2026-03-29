@@ -1,0 +1,41 @@
+base_path: "/mnt/output/3dgs-dr"
+conda_env: "/mnt/conda/gaussian_splatting_3.11"
+script_path: "/workspace/3DGS-DR"
+parameters:
+  training: 
+    base: " --disable_viewer--quiet --eval --iterations 61000 --test_iterations -1"
+    real: " -r 4 --longer_prop_iter 36_000 --use_env_scope"
+    synthetic: " -w"
+  rendering: 
+    base: " --quiet --eval --skip_train --render_normals"
+args: 
+  ref_real/sedan: " --env_scope_center -0.032 0.808 0.751 --env_scope_radius 2.138"
+  ref_real/gardenspheres: " --env_scope_center -0.2270 1.9700 1.7740 --env_scope_radius 0.974"
+  ref_real/toycar: " --env_scope_center 0.6810 0.8080 4.4550 --env_scope_radius 2.707"
+  
+  envgs/audi: " --env_scope_center -0.032 0.808 0.751 --env_scope_radius 4"
+  envgs/dog: " --env_scope_center -0.2270 1.9700 1.7740 --env_scope_radius 5"
+
+  tandt_intermediate/Family: " --env_scope_center 0.0 0.0 0.0 --env_scope_radius 3"
+  tandt_intermediate/Francis: " --env_scope_center 0.0 0.0 0.0 --env_scope_radius 3"
+  tandt_intermediate/Horse: " --env_scope_center 0.0 0.0 0.0 --env_scope_radius 3"
+  tandt_intermediate/Lighthouse: " --env_scope_center 0.0 0.0 0.0 --env_scope_radius 3"
+  tandt_intermediate/Train: " --env_scope_center 0.0 0.0 0.0 --env_scope_radius 3"
+
+  shiny_blender/toaster: " --longer_prop_iter 24_000"
+
+  GlossySynthetic/angel: " --longer_prop_iter 36_000"
+  GlossySynthetic/bell: " --longer_prop_iter 48_000  --opac_lr0_interval 0"
+  GlossySynthetic/horse: " --longer_prop_iter 36_000"
+  GlossySynthetic/potion: " --longer_prop_iter 24_000 "
+  GlossySynthetic/tbell: "  --longer_prop_iter 36_000  --opac_lr0_interval 0"
+  GlossySynthetic/teapot: " --longer_prop_iter 36_000"
+
+  nerf_synthetic/lego: " --densification_interval_when_prop 100"
+  nerf_synthetic/drums: " --densification_interval_when_prop 100"
+  nerf_synthetic/ship: " --densification_interval_when_prop 100"
+  nerf_synthetic/hotdog: " --densification_interval_when_prop 100"
+  nerf_synthetic/ficus: " --densification_interval_when_prop 100"
+  nerf_synthetic/mic: " --densification_interval_when_prop 100"
+  nerf_synthetic/chair: " --densification_interval_when_prop 100"
+  nerf_synthetic/materials: " --densification_interval_when_prop 100"
