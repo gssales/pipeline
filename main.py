@@ -99,6 +99,7 @@ def training(args, eval_dir, scenes, datasets, parameters):
     dataset = scene.parent.name
     train_args = get_dataset_args(dataset, "training", datasets, parameters) + common_args
     dataset_scene = scene.parent.name + "/" + scene.name
+    train_args += parameters["args"].get(dataset_scene, "")
 
     output_path = Path(eval_dir, dataset_scene)
     if (output_path / "point_cloud").exists():
