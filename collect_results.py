@@ -115,6 +115,7 @@ def main():
 
     for scene_dir in scene_dirs:
         fps_path = scene_dir / "fps.txt"
+        mae_path = scene_dir / "mae.txt"
         results_path = scene_dir / "results.json"
 
         if not results_path.exists():
@@ -127,6 +128,11 @@ def main():
             fps_value, count_value = parse_fps_txt(fps_path)
         else:
             missing.append((scene_dir, "fps.txt missing"))
+
+        mae_value = ""
+        if mae_path.exists():
+            with open(mae_path, "r", encoding="utf-8") as f:
+                mae_value = f.readline().strip()
 
         with open(results_path, "r", encoding="utf-8") as f:
             results = json.load(f)
@@ -150,6 +156,7 @@ def main():
             "PSNR": str(psnr).replace(".", ","),
             "SSIM": str(ssim).replace(".", ","),
             "LPIPS": str(lpips).replace(".", ","),
+            "MAE": str(mae_value).replace(".", ","),
             "fps": str(fps_value).replace(".", ","),
             "count": count_value,
             "peak_ram": str(peak_ram).replace(".", ","),
@@ -160,7 +167,7 @@ def main():
 
     # Write table
     delimiter = "\t" if args.tsv else ","
-    fieldnames = ["scene", "key", "PSNR", "SSIM", "LPIPS", "fps", "count", "peak_ram", "peak_vram", "mean_ram", "mean_vram"]
+    fieldnames = ["scene", "key", "PSNR", "SSIM", "LPIPS", "MAE", "fps", "count", "peak_ram", "peak_vram", "mean_ram", "mean_vram"]
 
     out_file.parent.mkdir(parents=True, exist_ok=True)
     with open(out_file, "w", newline="", encoding="utf-8") as f:

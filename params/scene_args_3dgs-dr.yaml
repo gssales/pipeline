@@ -1,10 +1,12 @@
 base_path: "/mnt/output/3dgs-dr"
-conda_env: "/mnt/conda/gaussian_splatting_3.11"
+conda_env: "/mnt/conda/gaussian_splatting_3.11/bin"
 script_path: "/workspace/3DGS-DR"
+mae_eval_datasets:
+  - "shiny_blender"
 parameters:
   training: 
-    base: " --disable_viewer--quiet --eval --iterations 61000 --test_iterations -1"
-    real: " -r 4 --longer_prop_iter 36_000 --use_env_scope"
+    base: " --quiet --eval --iterations 61000 --test_iterations -1 --save_iterations -1"
+    real: " --longer_prop_iter 36_000 --use_env_scope"
     synthetic: " -w"
   rendering: 
     base: " --quiet --eval --skip_train --render_normals"
