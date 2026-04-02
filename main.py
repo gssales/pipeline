@@ -190,7 +190,7 @@ def mae_evaluation(args, eval_dir, scenes, parameters):
     progress.set_description(f"MAE Evaluation {scene.parent.name}/{scene.name}")
     
     dataset_scene = scene.parent.name + "/" + scene.name
-    output_path = Path(eval_dir, dataset_scene, "test")
+    output_path = Path(eval_dir, dataset_scene)
     mae_command = f"{parameters['conda_env']}/python eval_mae.py --source_path {scene} --model_path {output_path}"
   
     if args.dry_run:
