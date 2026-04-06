@@ -210,16 +210,19 @@ def mae_evaluation(args, eval_dir, scenes, parameters):
 ######################
 #   FPS EVALUATION   #
 ######################
-def fps_evaluation(args, eval_dir, scenes, parameters):
+def fps_evaluation(args, eval_dir, scenes, datasets, parameters):
   print("Starting FPS evaluation for all scenes...")
 
   progress = tqdm(total=len(scenes), position=1)
   for scene in scenes:
     progress.set_description(f"FPS Evaluation {scene.parent.name}/{scene.name}")
 
+    dataset = scene.parent.name
+    fps_args = get_dataset_args(dataset, "fps", datasets, parameters)
+      
     dataset_scene = scene.parent.name + "/" + scene.name
     output_path = Path(eval_dir, dataset_scene)
-    fps_command = f"{parameters['conda_env']}/python eval_fps.py -s {scene} -m {output_path}"
+    fps_command = f"{parameters['conda_env']}/python eval_fps.py -s {scene} -m {output_path} {fps_args}"
     
     if args.dry_run:
       print("Dry run enabled. Command that would be executed:")
@@ -285,7 +288,7 @@ def pipeline(args):
     rendering(args, eval_dir, scenes, datasets, params)
   
   if not args.skip_fps:
-    fps_evaluation(args, eval_dir, scenes, params)
+    fps_evaluation(args, eval_dir, scenes, datasets, params)
 
   if not args.skip_metrics:
     metrics_evaluation(args, eval_dir, scenes, params)

@@ -1,17 +1,20 @@
 base_path: "/mnt/output/ours"
 conda_env: "/mnt/conda/gs_reflection_3.11/bin"
-script_path: "/workspace/gaussian_splatting_reflection"
+script_path: "/workspace/gaussian-splatting-reflection"
 mae_eval_datasets:
   - "shiny_blender"
 parameters:
   training: 
     base: " --disable_viewer --quiet --eval --test_iterations -1 --save_iterations -1"
-    real: " --init_until_iter 3000 --iteration 65000 --longer_prop_iter 15000"
+    real: " --init_until_iter 3000 --iteration 65000 --longer_prop_iter 15000 --use_env_scope"
     synthetic: " -w --init_until_iter 20 --iteration 35000"
   rendering: 
     base: " --quiet --eval --skip_train"
     real: " --iteration 65000 --start_checkpoint chkpnt65000.pth"
     synthetic: " --iteration 35000 --render_normals --start_checkpoint chkpnt35000.pth"
+  fps: 
+    real: " --iteration 65000 --start_checkpoint chkpnt65000.pth"
+    synthetic: " --iteration 35000 --start_checkpoint chkpnt35000.pth"
 args:
   ref_real/sedan: " --env_scope_center -0.032 0.808 0.751 --env_scope_radius 2.138"
   ref_real/gardenspheres: " --env_scope_center -0.2270 1.9700 1.7740 --env_scope_radius 0.974"
