@@ -1,0 +1,15 @@
+base_path: "/mnt/output/2dgs"
+conda_env: "/mnt/conda/surfel_splatting_3.11/bin"
+script_path: "/workspace/2d-gaussian-splatting"
+mae_eval_datasets:
+  - "shiny_blender"
+parameters:
+  training: 
+    base: " --quiet --eval --test_iterations -1"
+    real: " --lambda_dist 100"
+    synthetic: " -w --lambda_dist 1000"
+  rendering: 
+    base: " --quiet --eval --skip_train"
+    synthetic: " --render_normals"
+args: 
+  none: ""

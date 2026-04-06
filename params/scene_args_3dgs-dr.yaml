@@ -9,7 +9,7 @@ parameters:
     real: " --longer_prop_iter 36_000 --use_env_scope"
     synthetic: " -w"
   rendering: 
-    base: " --quiet --eval --skip_train --render_normals"
+    base: " --quiet --eval --skip_train"
 args: 
   ref_real/sedan: " --env_scope_center -0.032 0.808 0.751 --env_scope_radius 2.138"
   ref_real/gardenspheres: " --env_scope_center -0.2270 1.9700 1.7740 --env_scope_radius 0.974"
