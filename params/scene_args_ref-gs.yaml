@@ -28,9 +28,9 @@ parameters:
     base: " --quiet --eval --skip_train"
     synthetic: " --render_normals"
 args: 
-  ref_real/sedan: " --env_scope_center -0.032 0.808 0.751 --env_scope_radius 2.138 --init_until_iter 700 --xyz_axis 2.0 1.0 0.0",
-  ref_real/gardenspheres: " --env_scope_center -0.2270 1.9700 1.7740 --env_scope_radius 0.974 --init_until_iter 700 --xyz_axis 2.0 1.0 0.0",
-  ref_real/toycar: " --env_scope_center 0.486 1.108 3.72 --env_scope_radius 2.507 --init_until_iter 1500 --xyz_axis 0.0 2.0 1.0",
+  ref_real/sedan: " --env_scope_center -0.032 0.808 0.751 --env_scope_radius 2.138 --init_until_iter 700 --xyz_axis 2.0 1.0 0.0"
+  ref_real/gardenspheres: " --env_scope_center -0.2270 1.9700 1.7740 --env_scope_radius 0.974 --init_until_iter 700 --xyz_axis 2.0 1.0 0.0"
+  ref_real/toycar: " --env_scope_center 0.486 1.108 3.72 --env_scope_radius 2.507 --init_until_iter 1500 --xyz_axis 0.0 2.0 1.0"
   
   envgs/audi: " --env_scope_center -0.032 0.808 0.751 --env_scope_radius 4"
   envgs/dog: " --env_scope_center -0.2270 1.9700 1.7740 --env_scope_radius 5"
@@ -41,25 +41,25 @@ args:
   tandt_intermediate/Lighthouse: " --env_scope_center 0.0 0.0 0.0 --env_scope_radius 3"
   tandt_intermediate/Train: " --env_scope_center 0.0 0.0 0.0 --env_scope_radius 3"
 
-  shiny_blender/helmet: " --run_dim 256 --albedo_bias 0",
-  shiny_blender/car: " --run_dim 256 --albedo_bias 0",
-  shiny_blender/ball: " --run_dim 256 --albedo_bias 0",
-  shiny_blender/teapot: " --run_dim 256 --albedo_bias 0",
-  shiny_blender/coffee: " --run_dim 256 --albedo_bias 0 --albedo_lr 0.002",
-  shiny_blender/toaster: " --run_dim 256 --albedo_bias 0",
+  shiny_blender/helmet: " --run_dim 256 --albedo_bias 0"
+  shiny_blender/car: " --run_dim 256 --albedo_bias 0"
+  shiny_blender/ball: " --run_dim 256 --albedo_bias 0"
+  shiny_blender/teapot: " --run_dim 256 --albedo_bias 0"
+  shiny_blender/coffee: " --run_dim 256 --albedo_bias 0 --albedo_lr 0.002"
+  shiny_blender/toaster: " --run_dim 256 --albedo_bias 0"
 
-  nerf_synthetic/ship: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002",
-  nerf_synthetic/ficus: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002",
-  nerf_synthetic/lego: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002",
-  nerf_synthetic/mic: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002",
-  nerf_synthetic/hotdog: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002",
-  nerf_synthetic/chair: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002",
-  nerf_synthetic/materials: " --run_dim 256 --albedo_bias 0",
-  nerf_synthetic/drums: " --run_dim 64 --albedo_bias 0 --albedo_lr 0.002",
+  nerf_synthetic/ship: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002"
+  nerf_synthetic/ficus: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002"
+  nerf_synthetic/lego: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002"
+  nerf_synthetic/mic: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002"
+  nerf_synthetic/hotdog: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002"
+  nerf_synthetic/chair: " --run_dim 64 --albedo_bias 0 --gsrgb_loss --albedo_lr 0.002"
+  nerf_synthetic/materials: " --run_dim 256 --albedo_bias 0"
+  nerf_synthetic/drums: " --run_dim 64 --albedo_bias 0 --albedo_lr 0.002"
 
-  GlossySynthetic/bell: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000",
-  GlossySynthetic/tbell: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000",
-  GlossySynthetic/potion: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000",
-  GlossySynthetic/teapot: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000",
-  GlossySynthetic/luyu: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000",
-  GlossySynthetic/cat: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000",
+  GlossySynthetic/bell: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000"
+  GlossySynthetic/tbell: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000"
+  GlossySynthetic/potion: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000"
+  GlossySynthetic/teapot: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000"
+  GlossySynthetic/luyu: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000"
+  GlossySynthetic/cat: " --run_dim 256 --albedo_bias 2 --albedo_lr 0.0005 --init_until_iter 3000"
