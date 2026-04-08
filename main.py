@@ -106,7 +106,11 @@ def training(args, eval_dir, scenes, datasets, parameters):
       print(f"Output for {dataset_scene} already exists. Skipping training.")
       continue
 
-    train_command = f"{parameters['conda_env']}/python train.py -s {scene} -m {output_path} {train_args}"
+    train_script = "train.py"
+    if "train_script" in parameters and dataset in parameters["train_script"]:
+      train_script = parameters["train_script"][dataset]
+
+    train_command = f"{parameters['conda_env']}/python {train_script} -s {scene} -m {output_path} {train_args}"
 
     if args.dry_run:
       print("Dry run enabled. Command that would be executed:")
@@ -154,10 +158,14 @@ def rendering(args, eval_dir, scenes, datasets, parameters):
     
     dataset = scene.parent.name
     render_args = get_dataset_args(dataset, "rendering", datasets, parameters) + common_args
-      
+
+    render_script = "render.py"
+    if "render_script" in parameters and dataset in parameters["render_script"]:
+      render_script = parameters["render_script"][dataset]
+
     dataset_scene = scene.parent.name + "/" + scene.name
     output_path = Path(eval_dir, dataset_scene)
-    render_command = f"{parameters['conda_env']}/python render.py -s {scene} -m {output_path} {render_args}"
+    render_command = f"{parameters['conda_env']}/python {render_script} -s {scene} -m {output_path} {render_args}"
     
     if args.dry_run:
       print("Dry run enabled. Command that would be executed:")
@@ -219,10 +227,14 @@ def fps_evaluation(args, eval_dir, scenes, datasets, parameters):
 
     dataset = scene.parent.name
     fps_args = get_dataset_args(dataset, "fps", datasets, parameters)
-      
+
+    fps_script = "eval_fps.py"
+    if "fps_script" in parameters and dataset in parameters["fps_script"]:
+      fps_script = parameters["fps_script"][dataset]
+
     dataset_scene = scene.parent.name + "/" + scene.name
     output_path = Path(eval_dir, dataset_scene)
-    fps_command = f"{parameters['conda_env']}/python eval_fps.py -s {scene} -m {output_path} {fps_args}"
+    fps_command = f"{parameters['conda_env']}/python {fps_script} -s {scene} -m {output_path} {fps_args}"
     
     if args.dry_run:
       print("Dry run enabled. Command that would be executed:")
