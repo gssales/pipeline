@@ -1,0 +1,5 @@
+base_path: "/mnt/output/envgs"
+conda_env: "/mnt/conda/envgs/bin"
+script_path: "/workspace/EnvGS"
+mae_eval_datasets:
+  - "shiny_blender"
