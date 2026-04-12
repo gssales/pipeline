@@ -22,6 +22,16 @@ import shlex
 from monitor_utils import get_vram_procs, monitor
 from process_utils import ProcessManager
 
+
+def build_process_env(parameters):
+  env = os.environ.copy()
+  script_path = str(parameters["script_path"])
+  existing_pythonpath = env.get("PYTHONPATH", "")
+  env["PYTHONPATH"] = (
+    f"{script_path}{os.pathsep}{existing_pythonpath}" if existing_pythonpath else script_path
+  )
+  return env
+
 # Load datasets and parameters
 def read_scenes(dataset_path: Path):
   scenes = []
@@ -114,7 +124,13 @@ def training(args, eval_dir, scene, datasets, parameters):
 
   scene_times = {}
   scene_time = time.time()
-  process = psutil.Popen(shlex.split(train_command), cwd=parameters["script_path"], shell=False)
+  process_env = build_process_env(parameters)
+  process = psutil.Popen(
+    shlex.split(train_command),
+    cwd=parameters["script_path"],
+    shell=False,
+    env=process_env,
+  )
   pm.process = process
   pm.start_monitor(monitor, process.pid, active_gpu_procs, 1.0, os.path.join(output_path, "usage.csv"))
   try:
