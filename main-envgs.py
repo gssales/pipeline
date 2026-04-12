@@ -96,7 +96,7 @@ def training(args, eval_dir, scene, datasets, parameters):
     print(f"Output for {dataset_scene} already exists. Skipping training.")
     return
 
-  train_command = f"{parameters['conda_env']}/python evc-train -c configs/exps/envgs/{scene.parent.name}/envgs_{scene.name}.yaml exp_name={output_path}"
+  train_command = f"{parameters['conda_env']}/evc-train -c configs/exps/envgs/{scene.parent.name}/envgs_{scene.name}.yaml exp_name={output_path}"
 
   if args.dry_run:
     print("Dry run enabled. Command that would be executed:")
