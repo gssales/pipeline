@@ -48,7 +48,7 @@ def load_datasets(args):
   with open("params/datasets.yaml", 'r') as file:
     try:
       datasets = yaml.safe_load(file)
-      basePath = Path(datasets["data"]["base_path"])
+      basePath = Path(datasets["data"]["base_path"], "easyvolcap")
       if not args.synthetic_scenes_only:
         for dataset in datasets["data"]["real_datasets"]:
           scenes.extend(read_scenes(basePath / dataset))
@@ -102,6 +102,10 @@ def training(args, eval_dir, scene, datasets, parameters):
     print("Dry run enabled. Command that would be executed:")
     print(train_command)
     return
+
+  output_path.mkdir(parents=True, exist_ok=True)
+  with open(os.path.join(output_path, "commands.sh"), 'w') as file:
+    file.write(train_command+ "\n")
 
   pm = ProcessManager()
   pm.register_signal_handlers()
