@@ -22,16 +22,6 @@ import shlex
 from monitor_utils import get_vram_procs, monitor
 from process_utils import ProcessManager
 
-
-def build_process_env(parameters):
-  env = os.environ.copy()
-  script_path = str(parameters["script_path"])
-  existing_pythonpath = env.get("PYTHONPATH", "")
-  env["PYTHONPATH"] = (
-    f"{script_path}{os.pathsep}{existing_pythonpath}" if existing_pythonpath else script_path
-  )
-  return env
-
 # Load datasets and parameters
 def read_scenes(dataset_path: Path):
   scenes = []
@@ -99,23 +89,15 @@ def cd(destination):
 ################
 def training(args, eval_dir, scene, datasets, parameters):
   print("Starting training for scene:", scene)
-  dataset_scene = scene.parent.name + "/" + scene.name
+  dataset_scene = scene.parent.name + "_" + scene.name + "_" + time.strftime("%Y%m%d-%H%M%S")
+  train_command = f"{parameters['conda_env']}/evc-train -c configs/exps/envgs/{scene.parent.name}/envgs_{scene.name}.yaml exp_name={dataset_scene}"
 
-  output_path = Path(eval_dir, dataset_scene)
-  if (output_path / "RENDER").exists():
-    print(f"Output for {dataset_scene} already exists. Skipping training.")
-    return
-
-  train_command = f"{parameters['conda_env']}/evc-train -c configs/exps/envgs/{scene.parent.name}/envgs_{scene.name}.yaml exp_name={output_path}"
+  output_path = os.path.join('/mnt/output/envgs/record', dataset_scene)
 
   if args.dry_run:
     print("Dry run enabled. Command that would be executed:")
     print(train_command)
     return
-
-  output_path.mkdir(parents=True, exist_ok=True)
-  with open(os.path.join(output_path, "commands.sh"), 'w') as file:
-    file.write(train_command+ "\n")
 
   pm = ProcessManager()
   pm.register_signal_handlers()
@@ -124,13 +106,7 @@ def training(args, eval_dir, scene, datasets, parameters):
 
   scene_times = {}
   scene_time = time.time()
-  process_env = build_process_env(parameters)
-  process = psutil.Popen(
-    shlex.split(train_command),
-    cwd=parameters["script_path"],
-    shell=False,
-    env=process_env,
-  )
+  process = psutil.Popen(shlex.split(train_command), cwd=parameters["script_path"], shell=False)
   pm.process = process
   pm.start_monitor(monitor, process.pid, active_gpu_procs, 1.0, os.path.join(output_path, "usage.csv"))
   try:
