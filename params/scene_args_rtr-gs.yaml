@@ -1,0 +1,17 @@
+base_path: "/mnt/output/rtr_gs"
+conda_env: "/mnt/conda/rtr_gs/bin"
+script_path: "/workspace/RTR-GS"
+mae_eval_datasets:
+  - "shiny_blender"
+parameters:
+  training:
+    base: " --eval --ref_map --compute_with_prt"
+    synthetic: " --lambda_mask_entropy 0.1 -w"
+    stage1:
+      base: " --diffuse_iteration 3000 --skip_eval -t render_ref"
+      real: " --lambda_normal_render_depth 0.01 --densify_grad_threshold 0.0005"
+    stage2:
+      base: " --iterations 40000 -t render_ref_pbr"
+      real: " --save_training_vis --lambda_ref_strength_smooth 0.01 --lambda_reflect_strength_equal_metallic 0.0"
+      synthetic: " --lambda_reflect_strength_equal_metallic 0.1 --skip_eval --metallic"
+args: []
