@@ -124,12 +124,12 @@ def training(args, eval_dir, scene, datasets, parameters):
       return
 
     stage1_output_path = output_path / "stage1"
-    train1_command = f"{parameters['conda_env']}\\python.exe {train_script} -s {scene} -m {stage1_output_path} {train_args} {stage1_args}"
+    train1_command = f"{parameters['conda_env']}/python {train_script} -s {scene} -m {stage1_output_path} {train_args} {stage1_args}"
     checkpoint_path = stage1_output_path / "checkpoint" / "chkpnt30000.pth"
-    baking_command = f"{parameters['conda_env']}\\python.exe baking.py --checkpoint {checkpoint_path} --bound 2.0 --occlu_res 128"
+    baking_command = f"{parameters['conda_env']}/python baking.py --checkpoint {checkpoint_path} --bound 2.0 --occlu_res 128"
     stage2_output_path = output_path / "stage2"
     occlusion_path = stage1_output_path / "checkpoint" / "occlusion_volumes.pth"
-    train2_command = f"{parameters['conda_env']}\\python.exe {train_script} -s {scene} -m {stage2_output_path} -c {checkpoint_path} --occlusion_path {occlusion_path} {train_args} {stage2_args}"
+    train2_command = f"{parameters['conda_env']}/python {train_script} -s {scene} -m {stage2_output_path} -c {checkpoint_path} --occlusion_path {occlusion_path} {train_args} {stage2_args}"
 
     if args.dry_run:
       print("Dry run enabled. Command that would be executed:")
@@ -152,7 +152,7 @@ def training(args, eval_dir, scene, datasets, parameters):
     scene_times = {}
     scene_time = time.time()
     # stage 1 training
-    process = psutil.Popen(shlex.split(train1_command, posix=False), cwd=parameters["script_path"], shell=False)
+    process = psutil.Popen(shlex.split(train1_command), cwd=parameters["script_path"], shell=False)
     pm.process = process
     pm.start_monitor(monitor, process.pid, active_gpu_procs, 1.0, os.path.join(output_path, "usage_stage1.csv"))
     try:
@@ -165,7 +165,7 @@ def training(args, eval_dir, scene, datasets, parameters):
     pm.register_signal_handlers()
 
     active_gpu_procs = get_vram_procs()
-    process = psutil.Popen(shlex.split(baking_command, posix=False), cwd=parameters["script_path"], shell=False)
+    process = psutil.Popen(shlex.split(baking_command), cwd=parameters["script_path"], shell=False)
     pm.process = process
     pm.start_monitor(monitor, process.pid, active_gpu_procs, 1.0, os.path.join(output_path, "usage_baking.csv"))
     try:
@@ -178,7 +178,7 @@ def training(args, eval_dir, scene, datasets, parameters):
     pm.register_signal_handlers()
 
     active_gpu_procs = get_vram_procs()
-    process = psutil.Popen(shlex.split(train2_command, posix=False), cwd=parameters["script_path"], shell=False)
+    process = psutil.Popen(shlex.split(train2_command), cwd=parameters["script_path"], shell=False)
     pm.process = process
     pm.start_monitor(monitor, process.pid, active_gpu_procs, 1.0, os.path.join(output_path, "usage_stage2.csv"))
     try:
@@ -198,34 +198,7 @@ def training(args, eval_dir, scene, datasets, parameters):
 #   RENDERING   #
 #################
 def rendering(args, eval_dir, scene, datasets, parameters):
-  print("Starting rendering for scene:", scene)
-  common_args = parameters["parameters"]["rendering"]["base"]
-
-  dataset = scene.parent.name
-  render_args = get_dataset_args(dataset, "rendering", datasets, parameters) + common_args
-
-  render_script = "render.py"
-  if "render_script" in parameters and dataset in parameters["render_script"]:
-    render_script = parameters["render_script"][dataset]
-
-  dataset_scene = scene.parent.name + "/" + scene.name
-  for repeat in range(args.repeats):
-    output_path = Path(eval_dir, dataset_scene)
-    if args.repeats > 1:
-      output_path = Path(eval_dir, f"{dataset_scene}_run_{repeat+1}")
-      
-    render_command = f"{parameters['conda_env']}\\python.exe {render_script} -s {scene} -m {output_path} {render_args}"
-    
-    if args.dry_run:
-      print("Dry run enabled. Command that would be executed:")
-      print(render_command)
-      return
-
-    with open(os.path.join(output_path, "commands.sh"), 'a') as file:
-      file.write(render_command + "\n")
-
-    with cd(parameters["script_path"]):
-      os.system(render_command)
+  pass
 
 
 
@@ -233,74 +206,21 @@ def rendering(args, eval_dir, scene, datasets, parameters):
 #   MAE EVALUATION   #
 ######################
 def mae_evaluation(args, eval_dir, scene, parameters):
-  print("Starting MAE evaluation for scene:", scene)
-  dataset = scene.parent.name
-  if dataset not in parameters["mae_eval_datasets"]:
-    return
-
-  dataset_scene = scene.parent.name + "/" + scene.name
-  output_path = Path(eval_dir, dataset_scene)
-  if not (output_path / "point_cloud").exists():
-    print(f"Output for {dataset_scene} does not exist. Skipping MAE evaluation.")
-    return
-
-  mae_command = f"{parameters['conda_env']}\\python.exe eval_mae.py --source_path {scene} --model_path {output_path}"
-
-  if args.dry_run:
-    print("Dry run enabled. Command that would be executed:")
-    print(mae_command)
-    return
-
-  with open(os.path.join(output_path, "commands.sh"), 'a') as file:
-    file.write(mae_command + "\n")
-
-  with cd(parameters["script_path"]):
-    os.system(mae_command)
+  pass
   
 
 ######################
 #   FPS EVALUATION   #
 ######################
 def fps_evaluation(args, eval_dir, scene, datasets, parameters):
-  print("Starting FPS evaluation for scene:", scene)
-  dataset = scene.parent.name
-  fps_args = get_dataset_args(dataset, "fps", datasets, parameters)
-
-  fps_script = "eval_fps.py"
-  if "fps_script" in parameters and dataset in parameters["fps_script"]:
-    fps_script = parameters["fps_script"][dataset]
-
-  dataset_scene = scene.parent.name + "/" + scene.name
-  output_path = Path(eval_dir, dataset_scene)
-  fps_command = f"{parameters['conda_env']}\\python.exe {fps_script} -s {scene} -m {output_path} {fps_args}"
-  
-  if args.dry_run:
-    print("Dry run enabled. Command that would be executed:")
-    print(fps_command)
-    return
-
-  with open(os.path.join(output_path, "commands.sh"), 'a') as file:
-    file.write(fps_command + "\n")
-  
-  with cd(parameters["script_path"]):
-    os.system(fps_command)
+  pass
 
 
 ##########################
 #   METRICS EVALUATION   #
 ##########################
 def metrics_evaluation(args, eval_dir, scene, parameters):
-  print("Starting metrics evaluation for scene:", scene)
-  dataset_scene = scene.parent.name + "/" + scene.name
-  model_path = Path(eval_dir, dataset_scene)
-
-  metrics_command = f"{parameters['conda_env']}\\python.exe metrics.py -m {model_path}"
-  if args.dry_run:
-    print("Dry run enabled. Command that would be executed:")
-    print(metrics_command)
-  else:
-    with cd(parameters["script_path"]):
-      os.system(metrics_command)
+  pass
 
 
 ##################
@@ -312,10 +232,7 @@ def collect_results(output_path):
   os.system(collect_command)
 
 def render_videos(args, eval_dir, parameters):
-  output_path = Path(parameters["base_path"], eval_dir)
-  print("Rendering videos for all scenes in:", output_path)
-  render_command = "python render_videos.py --input_path " + str(output_path)
-  os.system(render_command)
+  pass
 
 
 def pipeline(args):
