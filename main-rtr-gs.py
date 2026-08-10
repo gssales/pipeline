@@ -107,7 +107,7 @@ def training(args, eval_dir, scene, datasets, parameters):
   stage1_args = get_training_stage_args(dataset, "stage1", datasets, parameters)
   stage2_args = get_training_stage_args(dataset, "stage2", datasets, parameters)
   dataset_scene = scene.parent.name + "/" + scene.name
-  train_args += parameters["args"].get(dataset_scene, "")
+  # train_args += parameters["args"].get(dataset_scene, "")
 
   train_script = "train.py"
   if "train_script" in parameters and dataset in parameters["train_script"]:
@@ -121,7 +121,7 @@ def training(args, eval_dir, scene, datasets, parameters):
 
     if (output_path / "point_cloud").exists():
       print(f"Output for {dataset_scene} already exists. Skipping training.")
-      return
+      continue
 
     stage1_output_path = output_path / "stage1"
     train1_command = f"{parameters['conda_env']}/python {train_script} -s {scene} -m {stage1_output_path} {train_args} {stage1_args}"
@@ -136,7 +136,7 @@ def training(args, eval_dir, scene, datasets, parameters):
       print(train1_command)
       print(baking_command)
       print(train2_command)
-      return
+      continue
 
     output_path.mkdir(parents=True, exist_ok=True)
     with open(os.path.join(output_path, "commands.sh"), 'w') as file:
