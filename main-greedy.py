@@ -96,45 +96,50 @@ def training(args, eval_dir, scene, datasets, parameters):
   dataset_scene = scene.parent.name + "/" + scene.name
   train_args += parameters["args"].get(dataset_scene, "")
 
-  output_path = Path(eval_dir, dataset_scene)
-  if (output_path / "point_cloud").exists():
-    print(f"Output for {dataset_scene} already exists. Skipping training.")
-    return
-
   train_script = "train.py"
   if "train_script" in parameters and dataset in parameters["train_script"]:
     train_script = parameters["train_script"][dataset]
+  
+  for repeat in range(args.repeats):
+    output_path = Path(eval_dir, dataset_scene)
+    if args.repeats > 1:
+      print(f"Repeat {repeat+1}/{args.repeats} for scene: {scene}")
+      output_path = Path(eval_dir, f"{dataset_scene}_run_{repeat+1}")
 
-  train_command = f"{parameters['conda_env']}/python {train_script} -s {scene} -m {output_path} {train_args}"
+    if (output_path / "point_cloud").exists():
+      print(f"Output for {dataset_scene} already exists. Skipping training.")
+      return
 
-  if args.dry_run:
-    print("Dry run enabled. Command that would be executed:")
-    print(train_command)
-    return
+    train_command = f"{parameters['conda_env']}/python {train_script} -s {scene} -m {output_path} {train_args}"
 
-  output_path.mkdir(parents=True, exist_ok=True)
-  with open(os.path.join(output_path, "commands.sh"), 'w') as file:
-    file.write(train_command+ "\n")
+    if args.dry_run:
+      print("Dry run enabled. Command that would be executed:")
+      print(train_command)
+      return
 
-  pm = ProcessManager()
-  pm.register_signal_handlers()
+    output_path.mkdir(parents=True, exist_ok=True)
+    with open(os.path.join(output_path, "commands.sh"), 'w') as file:
+      file.write(train_command+ "\n")
 
-  active_gpu_procs = get_vram_procs()
+    pm = ProcessManager()
+    pm.register_signal_handlers()
 
-  scene_times = {}
-  scene_time = time.time()
-  process = psutil.Popen(shlex.split(train_command), cwd=parameters["script_path"], shell=False)
-  pm.process = process
-  pm.start_monitor(monitor, process.pid, active_gpu_procs, 1.0, os.path.join(output_path, "usage.csv"))
-  try:
-    process.wait()
-  finally:
-    pm.cleanup()
-  scene_times[dataset_scene] = (time.time() - scene_time)/60.0
+    active_gpu_procs = get_vram_procs()
 
-  timing_name = "timing_" + time.strftime("%Y%m%d-%H%M%S") + ".json"
-  with open(os.path.join(output_path, timing_name), 'w') as file:
-    json.dump(scene_times, file, indent=True)
+    scene_times = {}
+    scene_time = time.time()
+    process = psutil.Popen(shlex.split(train_command), cwd=parameters["script_path"], shell=False)
+    pm.process = process
+    pm.start_monitor(monitor, process.pid, active_gpu_procs, 1.0, os.path.join(output_path, "usage.csv"))
+    try:
+      process.wait()
+    finally:
+      pm.cleanup()
+    scene_times[dataset_scene] = (time.time() - scene_time)/60.0
+
+    timing_name = "timing_" + time.strftime("%Y%m%d-%H%M%S") + ".json"
+    with open(os.path.join(output_path, timing_name), 'w') as file:
+      json.dump(scene_times, file, indent=True)
 
 
 
@@ -153,19 +158,23 @@ def rendering(args, eval_dir, scene, datasets, parameters):
     render_script = parameters["render_script"][dataset]
 
   dataset_scene = scene.parent.name + "/" + scene.name
-  output_path = Path(eval_dir, dataset_scene)
-  render_command = f"{parameters['conda_env']}/python {render_script} -s {scene} -m {output_path} {render_args}"
-  
-  if args.dry_run:
-    print("Dry run enabled. Command that would be executed:")
-    print(render_command)
-    return
+  for repeat in range(args.repeats):
+    output_path = Path(eval_dir, dataset_scene)
+    if args.repeats > 1:
+      output_path = Path(eval_dir, f"{dataset_scene}_run_{repeat+1}")
+      
+    render_command = f"{parameters['conda_env']}/python {render_script} -s {scene} -m {output_path} {render_args}"
+    
+    if args.dry_run:
+      print("Dry run enabled. Command that would be executed:")
+      print(render_command)
+      return
 
-  with open(os.path.join(output_path, "commands.sh"), 'a') as file:
-    file.write(render_command + "\n")
+    with open(os.path.join(output_path, "commands.sh"), 'a') as file:
+      file.write(render_command + "\n")
 
-  with cd(parameters["script_path"]):
-    os.system(render_command)
+    with cd(parameters["script_path"]):
+      os.system(render_command)
 
 
 
@@ -180,6 +189,10 @@ def mae_evaluation(args, eval_dir, scene, parameters):
 
   dataset_scene = scene.parent.name + "/" + scene.name
   output_path = Path(eval_dir, dataset_scene)
+  if not (output_path / "point_cloud").exists():
+    print(f"Output for {dataset_scene} does not exist. Skipping MAE evaluation.")
+    return
+
   mae_command = f"{parameters['conda_env']}/python eval_mae.py --source_path {scene} --model_path {output_path}"
 
   if args.dry_run:
@@ -296,6 +309,7 @@ if __name__ == "__main__":
   parser.add_argument("--dry_run", action="store_true", help="If set, the script will print the commands that would be run without executing them.")
   parser.add_argument("--output_dir", default=None)
   parser.add_argument("--method", default="3dgs")
+  parser.add_argument("--repeats", default=1, type=int, help="How many times to repeat the evaluation for each scene. Useful for averaging results over multiple runs.")
   args, _ = parser.parse_known_args()
 
   if args.real_scenes_only and args.synthetic_scenes_only:
