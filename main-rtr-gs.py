@@ -119,7 +119,7 @@ def training(args, eval_dir, scene, datasets, parameters):
       print(f"Repeat {repeat+1}/{args.repeats} for scene: {scene}")
       output_path = Path(eval_dir, f"{dataset_scene}_run_{repeat+1}")
 
-    if (output_path / "point_cloud").exists():
+    if (output_path / "stage1").exists():
       print(f"Output for {dataset_scene} already exists. Skipping training.")
       continue
 
@@ -213,7 +213,44 @@ def mae_evaluation(args, eval_dir, scene, parameters):
 #   FPS EVALUATION   #
 ######################
 def fps_evaluation(args, eval_dir, scene, datasets, parameters):
-  pass
+  print("Starting FPS evaluation for scene:", scene)
+  common_args = parameters["parameters"]["training"]["base"]
+  
+  dataset = scene.parent.name
+  train_args = get_dataset_args(dataset, "training", datasets, parameters) + common_args
+  stage2_args = get_training_stage_args(dataset, "stage2", datasets, parameters)
+  dataset_scene = scene.parent.name + "/" + scene.name
+
+  fps_script = "eval_fps.py"
+
+  for repeat in range(args.repeats):
+    output_path = Path(eval_dir, dataset_scene)
+    if args.repeats > 1:
+      print(f"Repeat {repeat+1}/{args.repeats} for scene: {scene}")
+      output_path = Path(eval_dir, f"{dataset_scene}_run_{repeat+1}")
+
+    if not (output_path / "stage2").exists():
+      print(f"Output for {dataset_scene} does not exist. Skipping FPS evaluation.")
+      continue
+
+    fps_args = f"{train_args} {stage2_args}"
+    eval_path = Path(output_path, "stage2")
+    if not eval_path.exists():
+      print(f"Stage 2 output for {dataset_scene} does not exist. Skipping FPS evaluation.")
+      continue
+
+    stage1_output_path = output_path / "stage1"
+    checkpoint_path = stage1_output_path / "checkpoint" / "chkpnt30000.pth"
+    occlusion_path = stage1_output_path / "checkpoint" / "occlusion_volumes.pth"
+    fps_command = f"{parameters['conda_env']}/python {fps_script} -s {scene} -m {eval_path} -c {checkpoint_path} --occlusion_path {occlusion_path} {fps_args}"
+  
+    if args.dry_run:
+      print("Dry run enabled. Command that would be executed:")
+      print(fps_command)
+      return
+  
+    with cd(parameters["script_path"]):
+      os.system(fps_command)
 
 
 ##########################
@@ -228,7 +265,7 @@ def metrics_evaluation(args, eval_dir, scene, parameters):
 ##################
 def collect_results(output_path):
   print("Collecting results in:", output_path)
-  collect_command = "python collect_results.py --tsv --output_path " + str(output_path)
+  collect_command = "python collect_results_rtr-gs.py --tsv --output_path " + str(output_path)
   os.system(collect_command)
 
 def render_videos(args, eval_dir, parameters):
@@ -249,8 +286,8 @@ def pipeline(args):
     # if not args.skip_rendering:
     #   rendering(args, eval_dir, scene, datasets, params)
     
-    # if not args.skip_fps:
-    #   fps_evaluation(args, eval_dir, scene, datasets, params)
+    if not args.skip_fps:
+      fps_evaluation(args, eval_dir, scene, datasets, params)
 
     # if not args.skip_metrics:
     #   metrics_evaluation(args, eval_dir, scene, params)
@@ -258,8 +295,8 @@ def pipeline(args):
     # if params.get("mae_eval_datasets", False) and not args.skip_mae_eval:
     #   mae_evaluation(args, eval_dir, scene, params)
 
-    # if not args.skip_collect_results:
-    #   collect_results(eval_dir)
+    if not args.skip_collect_results:
+      collect_results(eval_dir)
 
   print("Done with full evaluation for all scenes!")
 
