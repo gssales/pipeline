@@ -95,7 +95,7 @@ def pick_best_key(results: dict):
 
 
 def find_scene_dirs(base_path: Path):
-    if (base_path / "cfg_args").exists():
+    if (base_path / "stage2").exists():
         return [base_path]
 
     scene_dirs = []
@@ -160,7 +160,7 @@ def main():
         if fps_path.exists():
             fps_value, count_value = parse_fps_txt(fps_path)
         else:
-            missing.append((scene_dir, "fps.txt missing"))
+            missing.append((fps_path, "fps.txt missing"))
 
         psnr_value = ""
         ssim_value = ""
@@ -169,9 +169,9 @@ def main():
         ssim_pbr_value = ""
         lpips_pbr_value = ""
         if eval_path.exists():
-            psnr_value, ssim_value, lpips_value, psnr_pbr_value, ssim_pbr_value, lpips_pbr_value = parse_fps_txt(eval_path)
+            psnr_value, ssim_value, lpips_value, psnr_pbr_value, ssim_pbr_value, lpips_pbr_value = parse_eval_txt(eval_path)
         else:
-            missing.append((scene_dir, "eval.txt missing"))
+            missing.append((eval_path, "eval.txt missing"))
 
         peak_ram1, peak_vram1, mean_ram1, mean_vram1 = parse_usage(scene_dir, file_name="usage_stage1.csv")
         peak_ram2, peak_vram2, mean_ram2, mean_vram2 = parse_usage(scene_dir, file_name="usage_stage2.csv")

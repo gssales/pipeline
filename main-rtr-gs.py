@@ -32,13 +32,19 @@ def read_scenes(dataset_path: Path):
         scenes.append(scene_path)
   return scenes
 
+def is_synthetic_dataset(dataset, datasets):
+  return dataset in datasets["data"]["synthetic_datasets"]
+
+def is_real_dataset(dataset, datasets):
+  return dataset in datasets["data"]["real_datasets"]
+
 def get_dataset_args(dataset, stage, datasets, parameters):
   dataset_args = ""
   if stage not in parameters["parameters"]:
     return ""
-  if "real" in parameters["parameters"][stage] and dataset in datasets["data"]["real_datasets"]:
+  if "real" in parameters["parameters"][stage] and is_real_dataset(dataset, datasets):
     dataset_args += parameters["parameters"][stage]["real"]
-  if "synthetic" in parameters["parameters"][stage] and dataset in datasets["data"]["synthetic_datasets"]:
+  if "synthetic" in parameters["parameters"][stage] and is_synthetic_dataset(dataset, datasets):
     dataset_args += parameters["parameters"][stage]["synthetic"]
   return dataset_args
 
@@ -47,9 +53,9 @@ def get_training_stage_args(dataset, stage, datasets, parameters):
   if stage not in parameters["parameters"]["training"]:
     return ""
   stage_args += parameters["parameters"]["training"][stage]["base"]
-  if "real" in parameters["parameters"]["training"][stage] and dataset in datasets["data"]["real_datasets"]:
+  if "real" in parameters["parameters"]["training"][stage] and is_real_dataset(dataset, datasets):
     stage_args += parameters["parameters"]["training"][stage]["real"]
-  if "synthetic" in parameters["parameters"]["training"][stage] and dataset in datasets["data"]["synthetic_datasets"]:
+  if "synthetic" in parameters["parameters"]["training"][stage] and is_synthetic_dataset(dataset, datasets):
     stage_args += parameters["parameters"]["training"][stage]["synthetic"]
   return stage_args
 
@@ -130,6 +136,9 @@ def training(args, eval_dir, scene, datasets, parameters):
     stage2_output_path = output_path / "stage2"
     occlusion_path = stage1_output_path / "checkpoint" / "occlusion_volumes.pth"
     train2_command = f"{parameters['conda_env']}/python {train_script} -s {scene} -m {stage2_output_path} -c {checkpoint_path} --occlusion_path {occlusion_path} {train_args} {stage2_args}"
+    if is_synthetic_dataset(dataset, datasets):
+      stage2_checkpoint_path = stage2_output_path / "checkpoint" / "chkpnt40000.pth"
+      render_eval_command = f"{parameters['conda_env']}/python render_and_eval.py -m {stage2_output_path} -c {stage2_checkpoint_path} --occlusion_path {occlusion_path} --ref_map --compute_with_prt --metallic -t render_ref_pbr"
 
     if args.dry_run:
       print("Dry run enabled. Command that would be executed:")
@@ -187,6 +196,10 @@ def training(args, eval_dir, scene, datasets, parameters):
       pm.cleanup()
 
     scene_times[dataset_scene] = (time.time() - scene_time)/60.0
+
+    if is_synthetic_dataset(dataset, datasets):
+      with cd(parameters["script_path"]):
+        os.system(render_eval_command)
 
     timing_name = "timing_" + time.strftime("%Y%m%d-%H%M%S") + ".json"
     with open(os.path.join(output_path, timing_name), 'w') as file:
