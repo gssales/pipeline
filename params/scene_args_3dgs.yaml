@@ -1,9 +1,30 @@
-base_path: "/mnt/output/3dgs"
-conda_env: "/mnt/conda/gaussian_splatting_3.11"
-script_path: "/workspace/gaussian-splatting"
-parameters:
-  training: 
-    base: " --disable_viewer --quiet --eval --test_iterations -1 --save_iterations 30000"
-  rendering: 
-    base: " --quiet --eval --skip_train --iteration 30000"
-args: []
+method:
+  id: 3dgs
+  output_path: "/mnt/output/3dgs"
+  working_directory: "/workspace/gaussian-splatting"
+  python: "/mnt/conda/gaussian_splatting_3.11/bin/python"
+  evaluate_normal_mae: false
+
+stages:
+  training:
+    script: train.py
+    args: 
+      base: "--disable_viewer --quiet --eval"
+
+  rendering:
+    script: render.py
+    args: "--quiet --eval --skip_train --iteration 30000"
+
+  metrics_evaluation:
+    script: metrics.py
+    args: ""
+    
+  fps_evaluation:
+    script: fps_eval.py
+    args: ""
+
+  render_videos:
+    script: render-videos.py
+    args: ""
+    scene_overrides:
+      envgs/audi: " --path arc"

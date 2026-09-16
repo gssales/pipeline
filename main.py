@@ -1,274 +1,300 @@
-
-
-# 0 - dataset list and parameters
-# 1 - train
-# 1.5 - during training, measure fps and memory usage
-# 2 - measure fps
-# 3 - render images
-# 4 - measure metrics
-# 5 - render videos
-
-from contextlib import contextmanager
-import json
 import os
 from argparse import ArgumentParser
 from pathlib import Path
 import time
-import yaml
-from tqdm import tqdm
 import psutil
 import shlex
 
+from utils.context_utils import cd
+from utils.parser_utils import load_datasets, load_scene_args
 from monitor_utils import get_vram_procs, monitor
 from process_utils import ProcessManager
 
-# Load datasets and parameters
-def read_scenes(dataset_path: Path):
-  scenes = []
-  if dataset_path.exists() and dataset_path.is_dir():
-    for scene in os.listdir(dataset_path):
-      scene_path = dataset_path / scene
-      if scene_path.exists() and scene_path.is_dir():
-        scenes.append(scene_path)
-  return scenes
+def get_scene_config(scene: Path, dataset):
+  args = ""
+  if "scene_config" in dataset and scene.parent.name == dataset["id"]:
+    if scene.name in dataset["scene_config"]:
+      for param, value in dataset["scene_config"][scene.name].items():
+        args += f" --{param} {value}"
+  return args
 
-def get_dataset_args(dataset, stage, datasets, parameters):
-  dataset_args = ""
-  if stage not in parameters["parameters"]:
-    return ""
-  if "real" in parameters["parameters"][stage] and dataset in datasets["data"]["real_datasets"]:
-    dataset_args += parameters["parameters"][stage]["real"]
-  if "synthetic" in parameters["parameters"][stage] and dataset in datasets["data"]["synthetic_datasets"]:
-    dataset_args += parameters["parameters"][stage]["synthetic"]
-  return dataset_args
+def build_stage_args(params_stages, stage, dataset, scene):
+  args = ""
+  if stage in params_stages:
+    args += get_scene_config(scene, dataset)
 
-def load_datasets(args):
-  scenes = []
-  datasets = {}
-  with open("params/datasets.yaml", 'r') as file:
-    try:
-      datasets = yaml.safe_load(file)
-      basePath = Path(datasets["data"]["base_path"])
-      if not args.synthetic_scenes_only:
-        for dataset in datasets["data"]["real_datasets"]:
-          scenes.extend(read_scenes(basePath / dataset))
-      if not args.real_scenes_only:
-        for dataset in datasets["data"]["synthetic_datasets"]:
-          scenes.extend(read_scenes(basePath / dataset))
-        
-    except yaml.YAMLError as exc:
-      print(exc)
-  return scenes, datasets
+    if dataset.get("white_background", False):
+      args += " --white_background"
 
-def load_parameters(method):
-  params_path = Path(f"params/scene_args_{method}.yaml")
-  if not params_path.exists():
-    print(f"Parameters file {params_path} not found. Please make sure it exists and is named correctly.")
-    exit(1)
+    stage_config = params_stages[stage]
+    if type(stage_config["args"]) is str:
+      args += stage_config["args"]
+    else:
+      args += stage_config["args"].get("base", "")
+      if dataset.get("real", False):
+        args += stage_config["args"].get("real", "")
+      else:
+        args += stage_config["args"].get("synthetic", "")
 
-  parameters = {}
-  with open(params_path, 'r') as file:
-    try:
-      parameters = yaml.safe_load(file)
-    except yaml.YAMLError as exc:
-      print(exc)
-  return parameters
+    scene_name = scene.parent.name + "/" + scene.name
+    if "scene_overrides" in stage_config and scene_name in stage_config["scene_overrides"]:
+      args += stage_config["scene_overrides"][scene_name].get("args", "")
 
-@contextmanager
-def cd(destination):
-  old = os.getcwd()
-  os.chdir(destination)
-  try:
-    yield
-  finally:
-    os.chdir(old)
+  return args
+
+def get_scene_output_path(args, eval_dir, scene, repeat):
+  scene_name = scene.parent.name + "/" + scene.name
+  output_path = Path(eval_dir, scene_name)
+  if args.repeats > 1:
+    output_path = Path(eval_dir, f"{scene_name}_run_{repeat + 1}")
+  return output_path
 
 
 ################
 #   TRAINING   #
 ################
-def training(args, eval_dir, scenes, datasets, parameters):
-  print("Starting training for all scenes...")
-  common_args = parameters["parameters"]["training"]["base"]
+def training(args, eval_dir, scene, datasets, params, repeat=0):
+  if params["method"].get("multi_stage", False):
+    training_multistage(args, eval_dir, scene, datasets, params, repeat)
+  else:
+    training_single(args, eval_dir, scene, datasets, params, repeat)
 
-  scene_times = {}
-  progress = tqdm(total=len(scenes), position=1) 
-  for scene in scenes:
-    progress.set_description(f"Training {scene.parent.name}/{scene.name}")
-    
-    dataset = scene.parent.name
-    train_args = get_dataset_args(dataset, "training", datasets, parameters) + common_args
-    dataset_scene = scene.parent.name + "/" + scene.name
-    train_args += parameters["args"].get(dataset_scene, "")
+def training_single(args, eval_dir: Path, scene: Path, dataset, params, repeat=0):
+  print("Starting training for scene:", scene.name)
 
-    output_path = Path(eval_dir, dataset_scene)
-    if (output_path / "point_cloud").exists():
-      print(f"Output for {dataset_scene} already exists. Skipping training.")
+  python = params["method"]["python"]
+  training_script = params["stages"]["training"].get("script", "train.py")
+  training_args = build_stage_args(params["stages"], "training", dataset, scene)
+  output_path = get_scene_output_path(args, eval_dir, scene, repeat)
+
+  if (output_path / "point_cloud").exists():
+    print(f"Output for {scene.parent.name + '/' + scene.name} already exists. Skipping training.")
+    return
+
+  working_dir = params["method"]["working_directory"]
+  train_cmd = f"{python} {training_script} -s {scene} -m {output_path} {training_args}"
+  
+  if args.dry_run:
+    print("Dry run enabled. Command that would be executed:")
+    print(train_cmd)
+    return
+
+  output_path.mkdir(parents=True, exist_ok=True)
+  with open(os.path.join(output_path, "commands.sh"), 'w') as file:
+    file.write(train_cmd+ "\n")
+
+  pm = ProcessManager()
+  pm.register_signal_handlers()
+
+  active_gpu_procs = get_vram_procs()
+
+  scene_time = time.time()
+  process = psutil.Popen(shlex.split(train_cmd, posix=False), cwd=working_dir, shell=False)
+  pm.process = process
+  pm.start_monitor(monitor, process.pid, active_gpu_procs, 1.0, os.path.join(output_path, "usage.csv"))
+  try:
+    process.wait()
+  finally:
+    pm.cleanup()
+  scene_time= (time.time() - scene_time)/60.0
+
+  timing_name = "training_time_" + time.strftime("%Y%m%d-%H%M%S") + ".txt"
+  with open(os.path.join(output_path, timing_name), 'w') as file:
+    file.write(str(scene_time)+ "\n")
+
+def training_multistage(args, eval_dir, scene, dataset, params, repeat=0):
+  print("Starting training for scene:", scene.name)
+
+  python = params["method"]["python"]
+  stages = params["stages"]["training"].keys()
+  for stage in stages:
+    training_script = params["stages"]["training"][stage].get("script", "train.py")
+    training_args = build_stage_args(params["stages"]["training"], stage, dataset, scene)
+    output_path = get_scene_output_path(args, eval_dir, scene, repeat)
+
+    training_args = training_args.format(model_path=output_path)
+    if "output_path_template" in params["stages"]["training"][stage]:
+      template = params["stages"]["training"][stage]["output_path_template"]
+      stage_output_path = Path(template.format(model_path=output_path))
+    else:
+      stage_output_path = output_path
+
+    no_extra_args = params["stages"]["training"][stage].get("no_extra_args", False)
+
+    if (stage_output_path / "point_cloud").exists() and not no_extra_args:
+      print(f"Output for {scene.parent.name + '/' + scene.name} already exists. Skipping training.")
       continue
 
-    train_script = "train.py"
-    if "train_script" in parameters and dataset in parameters["train_script"]:
-      train_script = parameters["train_script"][dataset]
-
-    train_command = f"{parameters['conda_env']}/python {train_script} -s {scene} -m {output_path} {train_args}"
-
+    working_dir = params["method"]["working_directory"]
+    if no_extra_args:
+      train_cmd = f"{python} {training_script} {training_args}"
+    else:
+      train_cmd = f"{python} {training_script} -s {scene} -m {stage_output_path} {training_args}"
+    
     if args.dry_run:
       print("Dry run enabled. Command that would be executed:")
-      print(train_command)
+      print(train_cmd)
       continue
 
     output_path.mkdir(parents=True, exist_ok=True)
-    with open(os.path.join(output_path, "commands.sh"), 'w') as file:
-      file.write(train_command+ "\n")
+    with open(os.path.join(output_path, "commands.sh"), 'a') as file:
+      file.write(train_cmd+ "\n")
 
     pm = ProcessManager()
     pm.register_signal_handlers()
 
     active_gpu_procs = get_vram_procs()
 
-    print("\n")
     scene_time = time.time()
-    process = psutil.Popen(shlex.split(train_command), cwd=parameters["script_path"], shell=False)
+    process = psutil.Popen(shlex.split(train_cmd, posix=False), cwd=working_dir, shell=False)
     pm.process = process
-    pm.start_monitor(monitor, process.pid, active_gpu_procs, 1.0, os.path.join(output_path, "usage.csv"))
+    pm.start_monitor(monitor, process.pid, active_gpu_procs, 1.0, os.path.join(output_path, f"usage_{stage}.csv"))
     try:
       process.wait()
     finally:
       pm.cleanup()
-    scene_times[dataset_scene] = (time.time() - scene_time)/60.0
+    scene_time= (time.time() - scene_time)/60.0
 
-    progress.update(1)
-  progress.close()
-  timing_name = "timing_" + time.strftime("%Y%m%d-%H%M%S") + ".json"
-  with open(os.path.join(eval_dir, timing_name), 'w') as file:
-    json.dump(scene_times, file, indent=True)
-
-
+    timing_name = f"training_time_{stage}_" + time.strftime("%Y%m%d-%H%M%S") + ".txt"
+    with open(os.path.join(output_path, timing_name), 'w') as file:
+      file.write(str(scene_time)+ "\n")
 
 #################
 #   RENDERING   #
 #################
-def rendering(args, eval_dir, scenes, datasets, parameters):
-  print("Starting rendering for all scenes...")
-  common_args = parameters["parameters"]["rendering"]["base"]
+def rendering(args, eval_dir, scene, dataset, params, repeat=0):
+  print("Starting rendering for scene:", scene)
 
-  progress = tqdm(total=len(scenes), position=1) 
-  for scene in scenes:
-    progress.set_description(f"Rendering {scene.parent.name}/{scene.name}")
-    
-    dataset = scene.parent.name
-    render_args = get_dataset_args(dataset, "rendering", datasets, parameters) + common_args
+  python = params["method"]["python"]
+  rendering_script = params["stages"]["rendering"].get("script", "train.py")
+  rendering_args = build_stage_args(params["stages"], "rendering", dataset, scene)
+  output_path = get_scene_output_path(args, eval_dir, scene, repeat)
 
-    render_script = "render.py"
-    if "render_script" in parameters and dataset in parameters["render_script"]:
-      render_script = parameters["render_script"][dataset]
-
-    dataset_scene = scene.parent.name + "/" + scene.name
-    output_path = Path(eval_dir, dataset_scene)
-    render_command = f"{parameters['conda_env']}/python {render_script} -s {scene} -m {output_path} {render_args}"
-    
-    if args.dry_run:
-      print("Dry run enabled. Command that would be executed:")
-      print(render_command)
-      continue
-
-    with open(os.path.join(output_path, "commands.sh"), 'a') as file:
-      file.write(render_command + "\n")
-
-    with cd(parameters["script_path"]):
-      os.system(render_command)
-    progress.update(1)
-  progress.close()
-
-
-
-######################
-#   MAE EVALUATION   #
-######################
-def mae_evaluation(args, eval_dir, scenes, parameters):
-  print("Starting MAE evaluation for specified datasets...")
-  mae_scenes = [scene for scene in scenes if scene.parent.name in parameters["mae_eval_datasets"]] 
-
-  progress = tqdm(total=len(mae_scenes), position=1) 
-  for scene in mae_scenes:
-    dataset = scene.parent.name
-    if dataset not in parameters["mae_eval_datasets"]:
-      continue
-
-    progress.set_description(f"MAE Evaluation {scene.parent.name}/{scene.name}")
-    
-    dataset_scene = scene.parent.name + "/" + scene.name
-    output_path = Path(eval_dir, dataset_scene)
-    mae_command = f"{parameters['conda_env']}/python eval_mae.py --source_path {scene} --model_path {output_path}"
+  if not (output_path / "point_cloud").exists() and not args.dry_run:
+    print(f"Output for {scene.parent.name + '/' + scene.name} does not exist. Skipping rendering.")
+    return
   
-    if args.dry_run:
-      print("Dry run enabled. Command that would be executed:")
-      print(mae_command)
-      continue
-
-    with open(os.path.join(output_path, "commands.sh"), 'a') as file:
-      file.write(mae_command + "\n")
-
-    with cd(parameters["script_path"]):
-      os.system(mae_command)
-    progress.update(1)
-  progress.close()
+  working_dir = params["method"]["working_directory"]
+  render_cmd = f"{python} {rendering_script} -s {scene} -m {output_path} {rendering_args}"
   
+  if args.dry_run:
+    print("Dry run enabled. Command that would be executed:")
+    print(render_cmd)
+    return
+  
+  with open(os.path.join(output_path, "commands.sh"), 'a') as file:
+    file.write(render_cmd + "\n")
 
-######################
-#   FPS EVALUATION   #
-######################
-def fps_evaluation(args, eval_dir, scenes, datasets, parameters):
-  print("Starting FPS evaluation for all scenes...")
-
-  progress = tqdm(total=len(scenes), position=1)
-  for scene in scenes:
-    progress.set_description(f"FPS Evaluation {scene.parent.name}/{scene.name}")
-
-    dataset = scene.parent.name
-    fps_args = get_dataset_args(dataset, "fps", datasets, parameters)
-
-    fps_script = "eval_fps.py"
-    if "fps_script" in parameters and dataset in parameters["fps_script"]:
-      fps_script = parameters["fps_script"][dataset]
-
-    dataset_scene = scene.parent.name + "/" + scene.name
-    output_path = Path(eval_dir, dataset_scene)
-    fps_command = f"{parameters['conda_env']}/python {fps_script} -s {scene} -m {output_path} {fps_args}"
-    
-    if args.dry_run:
-      print("Dry run enabled. Command that would be executed:")
-      print(fps_command)
-      continue
-
-    with open(os.path.join(output_path, "commands.sh"), 'a') as file:
-      file.write(fps_command + "\n")
-    
-    with cd(parameters["script_path"]):
-      os.system(fps_command)
-    progress.update(1)
-  progress.close()
+  with cd(working_dir):
+    os.system(render_cmd)
 
 
 ##########################
 #   METRICS EVALUATION   #
 ##########################
-def metrics_evaluation(args, eval_dir, scenes, parameters):
-  print("Starting metrics evaluation for all scenes...")
+def metrics_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
+  print("Starting metrics evaluation for scene:", scene)
+  
+  python = params["method"]["python"]
+  metrics_script = params["stages"]["metrics_evaluation"].get("script", "metrics.py")
+  metrics_args = build_stage_args(params["stages"], "metrics_evaluation", dataset, scene)
+  output_path = get_scene_output_path(args, eval_dir, scene, repeat)
+  
+  if not (output_path / "point_cloud").exists() and not args.dry_run:
+    print(f"Output for {scene.parent.name + '/' + scene.name} does not exist. Skipping metrics evaluation.")
+    return
 
-  model_paths = ""
-  for scene in scenes:
-    dataset_scene = scene.parent.name + "/" + scene.name
-    output_path = Path(eval_dir, dataset_scene)
-    model_paths += f"{output_path} "
+  working_dir = params["method"]["working_directory"]
+  metrics_cmd = f"{python} {metrics_script} -m {output_path} {metrics_args}"
 
-  metrics_command = f"{parameters['conda_env']}/python metrics.py -m {model_paths}"
   if args.dry_run:
     print("Dry run enabled. Command that would be executed:")
-    print(metrics_command)
+    print(metrics_cmd)
+    return
   else:
-    with cd(parameters["script_path"]):
-      os.system(metrics_command)
+    with cd(working_dir):
+      os.system(metrics_cmd)
+
+
+######################
+#   MAE EVALUATION   #
+######################
+def mae_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
+  print("Starting MAE evaluation for scene:", scene)
+  if not params["method"]["evaluate_normal_mae"]:
+    return
+
+  python = params["method"]["python"]
+  mae_script = params["stages"]["mae_evaluation"].get("script", "eval_mae.py")
+  mae_args = build_stage_args(params["stages"], "mae_evaluation", dataset, scene)
+  output_path = get_scene_output_path(args, eval_dir, scene, repeat)
+  
+  if not (output_path / "point_cloud").exists() and not args.dry_run:
+    print(f"Output for {scene.parent.name + '/' + scene.name} does not exist. Skipping MAE evaluation.")
+    return
+
+  working_dir = params["method"]["working_directory"]
+  mae_cmd = f"{python} {mae_script} -m {output_path} {mae_args}"
+
+  if args.dry_run:
+    print("Dry run enabled. Command that would be executed:")
+    print(mae_cmd)
+    return
+  else:
+    with cd(working_dir):
+      os.system(mae_cmd)
+
+
+######################
+#   FPS EVALUATION   #
+######################
+def fps_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
+  print("Starting FPS evaluation for scene:", scene)
+  python = params["method"]["python"]
+  fps_script = params["stages"]["fps_evaluation"].get("script", "eval_fps.py")
+  fps_args = build_stage_args(params["stages"], "fps_evaluation", dataset, scene)
+  output_path = get_scene_output_path(args, eval_dir, scene, repeat)
+  
+  if not (output_path / "point_cloud").exists() and not args.dry_run:
+    print(f"Output for {scene.parent.name + '/' + scene.name} does not exist. Skipping FPS evaluation.")
+    return
+
+  working_dir = params["method"]["working_directory"]
+  fps_cmd = f"{python} {fps_script} -m {output_path} {fps_args}"
+
+  if args.dry_run:
+    print("Dry run enabled. Command that would be executed:")
+    print(fps_cmd)
+    return
+  else:
+    with cd(working_dir):
+      os.system(fps_cmd)
+
+
+#####################
+#   RENDER VIDEOS   #
+#####################
+def render_videos(args, eval_dir, scene, dataset, params, repeat=0):
+  print("Starting render videos for scene:", scene)
+  python = params["method"]["python"]
+  video_script = params["stages"]["render_videos"].get("script", "render-videos.py")
+  video_args = build_stage_args(params["stages"], "render_videos", dataset, scene)
+  output_path = get_scene_output_path(args, eval_dir, scene, repeat)
+  
+  if not (output_path / "point_cloud").exists() and not args.dry_run:
+    print(f"Output for {scene.parent.name + '/' + scene.name} does not exist. Skipping FPS evaluation.")
+    return
+
+  working_dir = params["method"]["working_directory"]
+  video_cmd = f"{python} {video_script} -m {output_path} {video_args}"
+
+  if args.dry_run:
+    print("Dry run enabled. Command that would be executed:")
+    print(video_cmd)
+    return
+  else:
+    with cd(working_dir):
+      os.system(video_cmd)
 
 
 ##################
@@ -276,57 +302,82 @@ def metrics_evaluation(args, eval_dir, scenes, parameters):
 ##################
 def collect_results(output_path):
   print("Collecting results in:", output_path)
-  collect_command = "python collect_results.py --tsv --output_path " + str(output_path)
-  os.system(collect_command)
-
-def render_videos(args, eval_dir, parameters):
-  output_path = Path(parameters["base_path"], eval_dir)
-  print("Rendering videos for all scenes in:", output_path)
-  render_command = "python render_videos.py --input_path " + str(output_path)
-  os.system(render_command)
+  collect_cmd = "python collect_results.py --tsv --output_path " + str(output_path)
+  os.system(collect_cmd)
 
 
 def pipeline(args):
-  
-  scenes, datasets = load_datasets(args)
-  params = load_parameters(args.method)
+  datasets = load_datasets(args.datasets_config)
+  params = load_scene_args(args.scene_args_config_path, args.method)
 
-  eval_dir = Path(args.output_dir) if args.output_dir else Path(params["base_path"], "eval_" + time.strftime("%Y%m%d-%H%M%S"))
-  
-  if not args.skip_training:
-    training(args, eval_dir, scenes, datasets, params)
+  if args.datasets:
+    datasets = {k: v for k, v in datasets.items() if k in args.datasets}
+    if not datasets:
+      print("No valid datasets found for the provided dataset IDs.")
+      exit(1)
 
-  if not args.skip_rendering:
-    rendering(args, eval_dir, scenes, datasets, params)
-  
-  if not args.skip_fps:
-    fps_evaluation(args, eval_dir, scenes, datasets, params)
+  eval_dir = Path(args.output_dir) if args.output_dir else Path(params["method"]["output_path"], "eval_" + time.strftime("%Y%m%d-%H%M%S"))
 
-  if not args.skip_metrics:
-    metrics_evaluation(args, eval_dir, scenes, params)
+  for dataset_id, dataset in datasets.items():
+    if args.real_scenes_only and not dataset.get("real", False):
+      continue
+    if args.synthetic_scenes_only and dataset.get("real", False):
+      continue
 
-  if params.get("mae_eval_datasets", False) and not args.skip_mae_eval:
-    mae_evaluation(args, eval_dir, scenes, params)
+    evaluate_normal_mae = dataset.get("evaluate_normal_mae", False) and params["method"].get("evaluate_normal_mae", True)
 
-  if not args.skip_collect_results:
-    collect_results(eval_dir)
+    scenes = dataset["scenes"]
+    print(f"Evaluating dataset: {dataset_id} with {len(scenes)} scenes.")
+
+    for scene in scenes:
+      if args.repeats == 1:
+        print(f"Evaluating scene: {scene}")
+      for repeat in range(args.repeats):
+        if args.repeats > 1:
+          print(f"Repeating evaluation for scene: {scene}, repeat: {repeat + 1}/{args.repeats}")
+
+        if not args.skip_training:
+          training(args, eval_dir, scene, dataset, params, repeat)
+
+        if not args.skip_rendering:
+          rendering(args, eval_dir, scene, dataset, params, repeat)
+        
+        if not args.skip_metrics:
+          metrics_evaluation(args, eval_dir, scene, dataset, params, repeat)
+
+        if evaluate_normal_mae and not args.skip_mae_eval:
+          mae_evaluation(args, eval_dir, scene, dataset, params, repeat)
+
+        if not args.skip_fps:
+          fps_evaluation(args, eval_dir, scene, dataset, params, repeat)
+
+        if args.render_videos:
+          render_videos(args, eval_dir, scene, dataset, params, repeat)
+
+        if not args.skip_collect_results:
+          collect_results(eval_dir)
 
   print("Done with full evaluation for all scenes!")
 
 if __name__ == "__main__":
   parser = ArgumentParser(description="Full evaluation script parameters")
+  parser.add_argument("--datasets_config", default="./params/datasets.yaml", help="Path to the datasets configuration YAML file.")
+  parser.add_argument("--scene_args_config_path", default="./params", help="Path to the scene arguments configuration YAML file.") 
+  parser.add_argument("--method", default="3dgs", help="Method to use for evaluation. Options: '3dgs', 'ref-gs', 'rtr-gs', 'gs-ir'.")
+  parser.add_argument("--output_dir", default=None)
+  parser.add_argument("--repeats", default=1, type=int, help="How many times to repeat the evaluation for each scene. Useful for averaging results over multiple runs.")
   parser.add_argument("--skip_training", action="store_true")
   parser.add_argument("--skip_rendering", action="store_true")
   parser.add_argument("--skip_fps", action="store_true")
   parser.add_argument("--skip_metrics", action="store_true")
-  parser.add_argument("--skip_collect_results", action="store_true")
-  parser.add_argument("--skip_render_videos", action="store_true")
   parser.add_argument("--skip_mae_eval", action="store_true")
+  parser.add_argument("--skip_collect_results", action="store_true")
+  parser.add_argument("--render_videos", action="store_true")
+
   parser.add_argument('--real_scenes_only', action='store_true')
   parser.add_argument('--synthetic_scenes_only', action='store_true')
   parser.add_argument("--dry_run", action="store_true", help="If set, the script will print the commands that would be run without executing them.")
-  parser.add_argument("--output_dir", default=None)
-  parser.add_argument("--method", default="3dgs")
+  parser.add_argument("--datasets", nargs='+', help="List of dataset IDs to filter and run the evaluation on. If not provided, all datasets will be evaluated.")
   args, _ = parser.parse_known_args()
 
   if args.real_scenes_only and args.synthetic_scenes_only:

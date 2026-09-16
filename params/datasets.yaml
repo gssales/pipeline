@@ -1,10 +1,32 @@
 data:
   base_path: "/mnt/data"
-  real_datasets:
-    - ref_real
-    - envgs
-    - tandt_intermediate
-  synthetic_datasets:
-    - shiny_blender
-    - GlossySynthetic
-    - nerf_synthetic
+  datasets:
+    ref_real:
+      type: real
+
+    envgs:
+      type: real
+      scene_config:
+        audi:
+          images: images_4
+          resolution: 1
+        dog:
+          images: images_2
+          resolution: 1
+
+    tandt_intermediate:
+      type: real
+
+    shiny_blender:
+      type: synthetic
+      white_background: true
+      evaluate_normal_mae: true
+
+    glossy_synthetic:
+      type: synthetic
+      directory: "GlossySynthetic"
+      white_background: true
+
+    nerf_synthetic:
+      type: synthetic
+      white_background: true
