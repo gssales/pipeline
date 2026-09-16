@@ -200,7 +200,7 @@ def metrics_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
   
   python = params["method"]["python"]
   metrics_script = params["stages"]["metrics_evaluation"].get("script", "metrics.py")
-  metrics_args = build_stage_args(params["stages"], "metrics_evaluation", dataset)
+  metrics_args = build_stage_args(params["stages"], "metrics_evaluation")
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
   
   if not (output_path / "point_cloud").exists() and not args.dry_run:
