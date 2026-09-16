@@ -18,13 +18,13 @@ def get_scene_config(scene: Path, dataset):
         args += f" --{param} {value}"
   return args
 
-def build_stage_args(params_stages, stage, dataset, scene=None):
+def build_stage_args(params_stages, stage, dataset=None, scene=None):
   args = ""
   if stage in params_stages:
-    if scene is not None:
+    if scene is not None and dataset is not None:
       args += get_scene_config(scene, dataset)
 
-    if dataset.get("white_background", False):
+    if dataset is not None and dataset.get("white_background", False):
       args += " --white_background"
 
     stage_config = params_stages[stage]
@@ -32,10 +32,11 @@ def build_stage_args(params_stages, stage, dataset, scene=None):
       args += stage_config["args"]
     else:
       args += stage_config["args"].get("base", "")
-      if dataset.get("real", False):
-        args += stage_config["args"].get("real", "")
-      else:
-        args += stage_config["args"].get("synthetic", "")
+      if dataset is not None:
+        if dataset.get("real", False):
+          args += stage_config["args"].get("real", "")
+        else:
+          args += stage_config["args"].get("synthetic", "")
 
     if scene is not None:
       scene_name = scene.parent.name + "/" + scene.name
