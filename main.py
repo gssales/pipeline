@@ -39,8 +39,8 @@ def build_stage_args(params_stages, stage, dataset, scene=None):
 
     if scene is not None:
       scene_name = scene.parent.name + "/" + scene.name
-      if "scene_overrides" in stage_config and scene_name in stage_config["scene_overrides"]:
-        args += stage_config["scene_overrides"][scene_name].get("args", "")
+      if "scene_overrides" in stage_config:
+        args += stage_config["scene_overrides"].get(scene_name, "")
 
   return args
 
