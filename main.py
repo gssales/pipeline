@@ -18,10 +18,11 @@ def get_scene_config(scene: Path, dataset):
         args += f" --{param} {value}"
   return args
 
-def build_stage_args(params_stages, stage, dataset, scene):
+def build_stage_args(params_stages, stage, dataset, scene=None):
   args = ""
   if stage in params_stages:
-    args += get_scene_config(scene, dataset)
+    if scene is not None:
+      args += get_scene_config(scene, dataset)
 
     if dataset.get("white_background", False):
       args += " --white_background"
@@ -36,9 +37,10 @@ def build_stage_args(params_stages, stage, dataset, scene):
       else:
         args += stage_config["args"].get("synthetic", "")
 
-    scene_name = scene.parent.name + "/" + scene.name
-    if "scene_overrides" in stage_config and scene_name in stage_config["scene_overrides"]:
-      args += stage_config["scene_overrides"][scene_name].get("args", "")
+    if scene is not None:
+      scene_name = scene.parent.name + "/" + scene.name
+      if "scene_overrides" in stage_config and scene_name in stage_config["scene_overrides"]:
+        args += stage_config["scene_overrides"][scene_name].get("args", "")
 
   return args
 
@@ -197,7 +199,7 @@ def metrics_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
   
   python = params["method"]["python"]
   metrics_script = params["stages"]["metrics_evaluation"].get("script", "metrics.py")
-  metrics_args = build_stage_args(params["stages"], "metrics_evaluation", dataset, scene)
+  metrics_args = build_stage_args(params["stages"], "metrics_evaluation", dataset)
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
   
   if not (output_path / "point_cloud").exists() and not args.dry_run:
