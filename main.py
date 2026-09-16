@@ -303,10 +303,15 @@ def render_videos(args, eval_dir, scene, dataset, params, repeat=0):
 ##################
 #   COLLECTING   #
 ##################
-def collect_results(output_path):
-  print("Collecting results in:", output_path)
-  collect_cmd = "python collect_results.py --tsv --output_path " + str(output_path)
+def collect_results(args, eval_dir, scene, dataset, params, repeat=0):
+  print("Collecting results for scene:", scene)
+  model_path = get_scene_output_path(args, eval_dir, scene, repeat)
+  collect_cmd = f"python collect.py --model_path {model_path} --method {params['method']['id']}"
   os.system(collect_cmd)
+
+  print("Collecting results in:", eval_dir)
+  collect_all_cmd = f"python collect_results.py --tsv --output_path {eval_dir}"
+  os.system(collect_all_cmd)
 
 
 def pipeline(args):
@@ -358,7 +363,7 @@ def pipeline(args):
           render_videos(args, eval_dir, scene, dataset, params, repeat)
 
         if not args.skip_collect_results:
-          collect_results(eval_dir)
+          collect_results(args, eval_dir, scene, dataset, params, repeat)
 
   print("Done with full evaluation for all scenes!")
 

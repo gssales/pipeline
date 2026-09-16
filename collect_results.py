@@ -1,60 +1,7 @@
-import re
 import json
 import csv
 from pathlib import Path
 from argparse import ArgumentParser
-
-def parse_fps_txt(fps_path: Path):
-    """
-    Expected:
-      fps: 123.45
-      count: 999
-    Returns (fps_str, count_str) keeping original formatting as strings.
-    """
-    fps_value = ""
-    count_value = ""
-    with open(fps_path, "r", encoding="utf-8") as fp:
-        line1 = fp.readline().strip()
-        line2 = fp.readline().strip()
-
-    if line1.lower().startswith("fps:"):
-        fps_value = line1.split(":", 1)[1].strip()
-    else:
-        fps_value = line1.strip()
-
-    if line2.lower().startswith("count:"):
-        count_value = line2.split(":", 1)[1].strip()
-    else:
-        count_value = line2.strip()
-
-    return fps_value, count_value
-
-
-def extract_iteration(key: str):
-    """
-    Extract a numeric iteration from keys like:
-      'ref_gs_30000' -> 30000
-      'ours_31000'   -> 31000
-    If none found, return -1 so it loses in max().
-    """
-    m = re.findall(r"(\d+)", key)
-    if not m:
-        return -1
-    return int(m[-1])
-
-
-def pick_best_key(results: dict):
-    """
-    Pick the key with the highest numeric iteration.
-    Fallback: first key if parsing fails.
-    """
-    if not results:
-        return None
-
-    keys = list(results.keys())
-    best = max(keys, key=lambda k: extract_iteration(k))
-    return best
-
 
 def find_scene_dirs(base_path: Path):
     if (base_path / "cfg_args").exists():
@@ -67,32 +14,6 @@ def find_scene_dirs(base_path: Path):
             if sub is not None:
                 scene_dirs.extend(sub)
     return scene_dirs
-
-def parse_usage(base_path: Path):
-    peak_ram, peak_vram = 0.0, 0.0
-    mean_ram, mean_vram = 0.0, 0.0
-    count = 0
-    if (base_path / "usage.csv").exists():
-        with open(base_path / "usage.csv", "r") as f:
-            reader = csv.reader(f)
-            next(reader)  # Skip header
-            for row in reader:
-                if len(row) < 3:
-                    continue
-                try:
-                    ram = float(row[1].replace(",", "."))
-                    vram = float(row[2].replace(",", "."))
-                    peak_ram = max(peak_ram, ram)
-                    peak_vram = max(peak_vram, vram)
-                    mean_ram += ram
-                    mean_vram += vram
-                    count += 1
-                except ValueError:
-                    continue
-    if count > 0:
-        mean_ram /= count
-        mean_vram /= count
-    return peak_ram, peak_vram, mean_ram, mean_vram
 
 def main():
     parser = ArgumentParser(description="Collect PSNR/SSIM/LPIPS + FPS into a CSV across all scenes.")
@@ -114,60 +35,31 @@ def main():
     missing = []
 
     for scene_dir in scene_dirs:
-        fps_path = scene_dir / "fps.txt"
-        mae_path = scene_dir / "mae.txt"
-        results_path = scene_dir / "results.json"
+        results_path = scene_dir / "collected_results.json"
 
         if not results_path.exists():
-            missing.append((scene_dir, "results.json missing"))
+            missing.append((scene_dir, "collected_results.json missing"))
             continue
-
-        fps_value = ""
-        count_value = ""
-        if fps_path.exists():
-            fps_value, count_value = parse_fps_txt(fps_path)
-        else:
-            missing.append((scene_dir, "fps.txt missing"))
-
-        mae_value = ""
-        if mae_path.exists():
-            with open(mae_path, "r", encoding="utf-8") as f:
-                mae_value = f.readline().strip()
 
         with open(results_path, "r", encoding="utf-8") as f:
             results = json.load(f)
 
-        best_key = pick_best_key(results)
-        if best_key is None or best_key not in results:
-            missing.append((scene_dir, "results.json empty/invalid"))
-            continue
-
-        entry = results[best_key]
-        # Tolerate missing fields
-        psnr = entry.get("PSNR", "")
-        ssim = entry.get("SSIM", "")
-        lpips = entry.get("LPIPS", "")
-
-        peak_ram, peak_vram, mean_ram, mean_vram = parse_usage(scene_dir)
-
-        rows.append({
-            "scene": str(scene_dir.relative_to(output_root)),
-            "key": best_key,
-            "PSNR": str(psnr).replace(".", ","),
-            "SSIM": str(ssim).replace(".", ","),
-            "LPIPS": str(lpips).replace(".", ","),
-            "MAE": str(mae_value).replace(".", ","),
-            "fps": str(fps_value).replace(".", ","),
-            "count": count_value,
-            "peak_ram": str(peak_ram).replace(".", ","),
-            "peak_vram": str(peak_vram).replace(".", ","),
-            "mean_ram": str(mean_ram).replace(".", ","),
-            "mean_vram": str(mean_vram).replace(".", ","),
-        })
+            rows.append({
+                "scene": str(scene_dir.relative_to(output_root)),
+                "PSNR": str(results.get("PSNR", "")).replace(".", ","),
+                "SSIM": str(results.get("SSIM", "")).replace(".", ","),
+                "LPIPS": str(results.get("LPIPS", "")).replace(".", ","),
+                "MAE": str(results.get("MAE", "")).replace(".", ","),
+                "fps": str(results.get("FPS", "")).replace(".", ","),
+                "count": results.get("count", ""),
+                "peak_ram": str(results.get("peak_ram", "")).replace(".", ","),
+                "peak_vram": str(results.get("peak_vram", "")).replace(".", ","),
+                "training_time": str(results.get("training_time", "")).replace(".", ","),
+            })
 
     # Write table
     delimiter = "\t" if args.tsv else ","
-    fieldnames = ["scene", "key", "PSNR", "SSIM", "LPIPS", "MAE", "fps", "count", "peak_ram", "peak_vram", "mean_ram", "mean_vram"]
+    fieldnames = ["scene", "PSNR", "SSIM", "LPIPS", "MAE", "fps", "count", "peak_ram", "peak_vram", "training_time"]
 
     out_file.parent.mkdir(parents=True, exist_ok=True)
     with open(out_file, "w", newline="", encoding="utf-8") as f:
