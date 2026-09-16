@@ -9,11 +9,11 @@ stages:
   training:
     script: train.py
     args: 
-      base: "--disable_viewer --quiet --eval"
+      base: " --disable_viewer --quiet --eval"
 
   rendering:
     script: render.py
-    args: "--quiet --eval --skip_train --iteration 30000"
+    args: " --quiet --eval --skip_train --iteration 30000"
 
   metrics_evaluation:
     script: metrics.py
