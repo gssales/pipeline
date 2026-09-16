@@ -205,7 +205,7 @@ def metrics_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
     return
 
   working_dir = params["method"]["working_directory"]
-  metrics_cmd = f"{python} {metrics_script} -m {output_path} {metrics_args}"
+  metrics_cmd = f"{python} {metrics_script} --model_paths {output_path} {metrics_args}"
 
   if args.dry_run:
     print("Dry run enabled. Command that would be executed:")

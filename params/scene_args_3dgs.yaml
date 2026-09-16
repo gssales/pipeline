@@ -20,7 +20,7 @@ stages:
     args: ""
     
   fps_evaluation:
-    script: fps_eval.py
+    script: eval_fps.py
     args: ""
 
   render_videos:
