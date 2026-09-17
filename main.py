@@ -330,6 +330,8 @@ def pipeline(args):
 
   eval_dir = Path(args.output_dir) if args.output_dir else Path(params["method"]["output_path"], "eval_" + time.strftime("%Y%m%d-%H%M%S"))
 
+  stages = args.stages if args.stages else ["training", "rendering", "metrics", "mae_eval", "fps", "collect"]
+
   for dataset_id, dataset in datasets.items():
     if args.real_scenes_only and not dataset.get("real", False):
       continue
@@ -341,6 +343,10 @@ def pipeline(args):
     scenes = dataset["scenes"]
     print(f"Evaluating dataset: {dataset_id} with {len(scenes)} scenes.")
 
+    if args.filter_scenes_by:
+      scenes = [scene for scene in scenes if scene.name in args.filter_scenes_by]
+      print(f"Filtered scenes to {len(scenes)} based on provided filter: {args.filter_scenes_by}")
+
     for scene in scenes:
       if args.repeats == 1:
         print(f"Evaluating scene: {scene}")
@@ -348,25 +354,25 @@ def pipeline(args):
         if args.repeats > 1:
           print(f"Repeating evaluation for scene: {scene}, repeat: {repeat + 1}/{args.repeats}")
 
-        if not args.skip_training:
+        if "training" in stages:
           training(args, eval_dir, scene, dataset, params, repeat)
 
-        if not args.skip_rendering:
+        if "rendering" in stages:
           rendering(args, eval_dir, scene, dataset, params, repeat)
         
-        if not args.skip_metrics:
+        if "metrics" in stages:
           metrics_evaluation(args, eval_dir, scene, dataset, params, repeat)
 
-        if evaluate_normal_mae and not args.skip_mae_eval:
+        if evaluate_normal_mae and "mae_eval" in stages:
           mae_evaluation(args, eval_dir, scene, dataset, params, repeat)
 
-        if not args.skip_fps:
+        if "fps" in stages:
           fps_evaluation(args, eval_dir, scene, dataset, params, repeat)
 
-        if args.render_videos:
+        if "render_videos" in stages:
           render_videos(args, eval_dir, scene, dataset, params, repeat)
 
-        if not args.skip_collect_results:
+        if "collect" in stages:
           collect_results(args, eval_dir, scene, dataset, params, repeat)
 
   print("Done with full evaluation for all scenes!")
@@ -378,18 +384,12 @@ if __name__ == "__main__":
   parser.add_argument("--method", default="3dgs", help="Method to use for evaluation. Options: '3dgs', 'ref-gs', 'rtr-gs', 'gs-ir'.")
   parser.add_argument("--output_dir", default=None)
   parser.add_argument("--repeats", default=1, type=int, help="How many times to repeat the evaluation for each scene. Useful for averaging results over multiple runs.")
-  parser.add_argument("--skip_training", action="store_true")
-  parser.add_argument("--skip_rendering", action="store_true")
-  parser.add_argument("--skip_fps", action="store_true")
-  parser.add_argument("--skip_metrics", action="store_true")
-  parser.add_argument("--skip_mae_eval", action="store_true")
-  parser.add_argument("--skip_collect_results", action="store_true")
-  parser.add_argument("--render_videos", action="store_true")
-
+  parser.add_argument("--stages", nargs='+', default=["training", "rendering", "metrics", "mae_eval", "fps", "collect"], help="Stages to run. Options: 'training', 'rendering', 'metrics', 'mae_eval', 'fps', 'render_videos', 'collect'.")
   parser.add_argument('--real_scenes_only', action='store_true')
   parser.add_argument('--synthetic_scenes_only', action='store_true')
   parser.add_argument("--dry_run", action="store_true", help="If set, the script will print the commands that would be run without executing them.")
   parser.add_argument("--datasets", nargs='+', help="List of dataset IDs to filter and run the evaluation on. If not provided, all datasets will be evaluated.")
+  parser.add_argument("--filter_scenes_by", nargs='+', default=[], help="List of scene names to filter and run the evaluation on. If not provided, all scenes will be evaluated.")
   args, _ = parser.parse_known_args()
 
   if args.real_scenes_only and args.synthetic_scenes_only:
