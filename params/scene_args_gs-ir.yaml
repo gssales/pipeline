@@ -1,0 +1,41 @@
+method:
+  id: gs-ir
+  output_path: "/mnt/output/gs_ir"
+  working_directory: "/workspace/GS-IR"
+  python: "/mnt/conda/gsir/bin/python"
+  multi_stage: true
+  evaluate_normal_mae: true
+
+stages:
+  training:
+    stage1:
+      script: train.py
+      args: " --eval"
+
+    baking:
+      script: baking.py
+      args: 
+        base: " --checkpoint {model_path}/chkpnt30000.pth"
+        real: " --bound 1.5 --occlu_res 128 --occlusion 0.25"
+        synthetic: " --bound 16.0 --occlu_res 256 --occlusion 0.4"
+
+    stage2:
+      script: train.py
+      args:
+        base: " --eval --start_checkpoint {model_path}/chkpnt30000.pth"
+        real: " --iterations 40000 --indirect --metallic"
+        synthetic: " --iterations 35000 --gamma --indirect --metallic"
+
+  rendering:
+    script: render.py
+    args:
+      base: " --eval --skip_train --pbr"
+      real: " --checkpoint {model_path}/chkpnt40000.pth --indirect --metallic"
+      synthetic: " --checkpoint {model_path}/chkpnt35000.pth --gamma --indirect --metallic"
+
+  fps_evaluation:
+    script: eval_fps.py
+    args:
+      base: " --pbr"
+      real: " --checkpoint {model_path}/chkpnt40000.pth --indirect --metallic"
+      synthetic: " --checkpoint {model_path}/chkpnt35000.pth --gamma --indirect --metallic"
