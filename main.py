@@ -171,6 +171,8 @@ def rendering(args, eval_dir, scene, dataset, params, repeat=0):
   python = params["method"]["python"]
   rendering_script = params["stages"]["rendering"].get("script", "train.py")
   rendering_args = build_stage_args(params["stages"], "rendering", dataset, scene)
+  if dataset.get("has_normals", False) and params["method"].get("evaluate_normal_mae", False):
+    rendering_args += " --save_normals"
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
 
   if not (output_path / "point_cloud").exists() and not args.dry_run:
@@ -229,7 +231,7 @@ def mae_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
 
   python = params["method"]["python"]
   mae_script = params["stages"]["mae_evaluation"].get("script", "eval_mae.py")
-  mae_args = build_stage_args(params["stages"], "mae_evaluation", dataset, scene)
+  mae_args = build_stage_args(params["stages"], "mae_evaluation")
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
   
   if not (output_path / "point_cloud").exists() and not args.dry_run:
@@ -237,7 +239,7 @@ def mae_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
     return
 
   working_dir = params["method"]["working_directory"]
-  mae_cmd = f"{python} {mae_script} -m {output_path} {mae_args}"
+  mae_cmd = f"{python} {mae_script} --source_path {scene} --model_path {output_path} {mae_args}"
 
   if args.dry_run:
     print("Dry run enabled. Command that would be executed:")
@@ -332,7 +334,7 @@ def pipeline(args):
     if args.synthetic_scenes_only and dataset.get("real", False):
       continue
 
-    evaluate_normal_mae = dataset.get("evaluate_normal_mae", False) and params["method"].get("evaluate_normal_mae", True)
+    evaluate_normal_mae = dataset.get("has_normals", False) and params["method"].get("evaluate_normal_mae", True)
 
     scenes = dataset["scenes"]
     print(f"Evaluating dataset: {dataset_id} with {len(scenes)} scenes.")

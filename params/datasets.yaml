@@ -20,7 +20,7 @@ data:
     shiny_blender:
       type: synthetic
       white_background: true
-      evaluate_normal_mae: true
+      has_normals: true
 
     glossy_synthetic:
       type: synthetic

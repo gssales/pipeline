@@ -1,0 +1,15 @@
+method:
+  id: gshader
+  output_path: "/mnt/output/gshader"
+  working_directory: "/workspace/GaussianShader"
+  python: "/mnt/conda/gaussian_shader/bin/python"
+  evaluate_normal_mae: true
+  
+stages:
+  training:
+    script: train.py
+    args: " --quiet --eval --brdf_dim 3 --sh_degree -1 --lambda_predicted_normal 2e-1 --brdf_env 512"
+
+  rendering:
+    script: render.py
+    args: " --quiet --eval --skip_train"
