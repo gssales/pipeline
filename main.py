@@ -33,9 +33,9 @@ def build_stage_args(params_stages, stage, dataset=None, scene=None):
     else:
       args += stage_config["args"].get("base", "")
       if dataset is not None:
-        if dataset.get("real", False):
+        if dataset.get("type", "") == "real":
           args += stage_config["args"].get("real", "")
-        else:
+        elif dataset.get("type", "") == "synthetic":
           args += stage_config["args"].get("synthetic", "")
 
     if scene is not None:

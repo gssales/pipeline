@@ -37,5 +37,5 @@ stages:
     script: eval_fps.py
     args:
       base: " --pbr"
-      real: " --checkpoint {model_path}/chkpnt40000.pth --indirect --metallic"
-      synthetic: " --checkpoint {model_path}/chkpnt35000.pth --gamma --indirect --metallic"
+      real: " --checkpoint {model_path}/chkpnt40000.pth --iteration 40000 --indirect --metallic"
+      synthetic: " --checkpoint {model_path}/chkpnt35000.pth --iteration 35000 --gamma --indirect --metallic"

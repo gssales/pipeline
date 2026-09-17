@@ -10,10 +10,10 @@ stages:
     script: train.py
     args: 
       base: " --quiet --eval --iterations 61000 --test_iterations -1 --save_iterations -1"
-      real: " --longer_prop_iter 36_000 --use_env_scope"
+      real: " --longer_prop_iter 36_000"
     scene_overrides:
-      envgs/audi: " --env_scope_center -0.032 0.808 0.751 --env_scope_radius 4"
-      envgs/dog: " --env_scope_center -0.2270 1.9700 1.7740 --env_scope_radius 5"
+      envgs/audi: " --use_env_scope --env_scope_center -0.032 0.808 0.751 --env_scope_radius 4"
+      envgs/dog: " --use_env_scope --env_scope_center -0.2270 1.9700 1.7740 --env_scope_radius 5"
       shiny_blender/toaster: " --longer_prop_iter 24_000"
 
   rendering:
