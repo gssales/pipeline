@@ -174,6 +174,7 @@ def rendering(args, eval_dir, scene, dataset, params, repeat=0):
   if dataset.get("has_normals", False) and params["method"].get("evaluate_normal_mae", False):
     rendering_args += " --save_normals"
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
+  rendering_args = rendering_args.format(model_path=output_path)
 
   if not (output_path / "point_cloud").exists() and not args.dry_run:
     print(f"Output for {scene.parent.name + '/' + scene.name} does not exist. Skipping rendering.")
@@ -259,6 +260,7 @@ def fps_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
   fps_script = params["stages"].get("fps_evaluation", {}).get("script", "eval_fps.py")
   fps_args = build_stage_args(params["stages"], "fps_evaluation", dataset, scene)
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
+  fps_args = fps_args.format(model_path=output_path)
   
   if not (output_path / "point_cloud").exists() and not args.dry_run:
     print(f"Output for {scene.parent.name + '/' + scene.name} does not exist. Skipping FPS evaluation.")
