@@ -169,7 +169,7 @@ def rendering(args, eval_dir, scene, dataset, params, repeat=0):
   print("Starting rendering for scene:", scene)
 
   python = params["method"]["python"]
-  rendering_script = params["stages"]["rendering"].get("script", "train.py")
+  rendering_script = params["stages"].get("rendering", {}).get("script", "train.py")
   rendering_args = build_stage_args(params["stages"], "rendering", dataset, scene)
   if dataset.get("has_normals", False) and params["method"].get("evaluate_normal_mae", False):
     rendering_args += " --save_normals"
@@ -201,7 +201,7 @@ def metrics_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
   print("Starting metrics evaluation for scene:", scene)
   
   python = params["method"]["python"]
-  metrics_script = params["stages"]["metrics_evaluation"].get("script", "metrics.py")
+  metrics_script = params["stages"].get("metrics_evaluation", {}).get("script", "metrics.py")
   metrics_args = build_stage_args(params["stages"], "metrics_evaluation")
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
   
@@ -230,7 +230,7 @@ def mae_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
     return
 
   python = params["method"]["python"]
-  mae_script = params["stages"]["mae_evaluation"].get("script", "eval_mae.py")
+  mae_script = params["stages"].get("mae_evaluation", {}).get("script", "eval_mae.py")
   mae_args = build_stage_args(params["stages"], "mae_evaluation")
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
   
@@ -256,7 +256,7 @@ def mae_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
 def fps_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
   print("Starting FPS evaluation for scene:", scene)
   python = params["method"]["python"]
-  fps_script = params["stages"]["fps_evaluation"].get("script", "eval_fps.py")
+  fps_script = params["stages"].get("fps_evaluation", {}).get("script", "eval_fps.py")
   fps_args = build_stage_args(params["stages"], "fps_evaluation", dataset, scene)
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
   
