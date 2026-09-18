@@ -342,8 +342,8 @@ def render_videos(args, eval_dir, scene, dataset, params, repeat=0):
 def collect_results(args, eval_dir, scene, dataset, params, repeat=0):
   print("Collecting results for scene:", scene)
   model_path = get_scene_output_path(args, eval_dir, scene, repeat)
-  if "output_path_template" in params["stages"].get("collect_results", {}):
-    template = params["stages"]["collect_results"]["output_path_template"]
+  if "output_path_template" in params["stages"].get("collect", {}):
+    template = params["stages"]["collect"]["output_path_template"]
     model_path = Path(template.format(model_path=model_path))
 
   collect_cmd = f"python collect.py --model_path {model_path} --method {params['method']['id']}"

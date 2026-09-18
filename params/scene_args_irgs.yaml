@@ -1,0 +1,35 @@
+method:
+  id: irgs
+  output_path: "/mnt/output/irgs"
+  working_directory: "/workspace/IRGS"
+  python: "/mnt/conda/irgs/bin/python"
+  multi_stage: true
+  evaluate_normal_mae: true
+
+stages:
+  training:
+    stage1:
+      script: train_refgaussian.py
+      args: " --eval --lambda_mask_entropy 0.05"
+
+    stage2:
+      script: train.py
+      output_path_template: "{model_path}/irgs"
+      args:
+        base: " --iterations 20000 --start_checkpoint_refgs {model_path}/chkpnt50000.pth --lambda_base_color_smooth 2 --lambda_roughness_smooth 2 --diffuse_sample_num 256 --envmap_cubemap_lr 0.01 --lambda_light_smooth 0.0005 --init_roughness_value 0.6 --lambda_light 0.1 --train_ray"
+
+
+  rendering:
+    script: render.py
+    output_path_template: "{model_path}/irgs"
+    args:
+      base: " --eval --skip_train --diffuse_sample_num 512"
+
+  fps_evaluation:
+    script: eval_fps.py
+    output_path_template: "{model_path}/irgs"
+    args:
+      base: " --diffuse_sample_num 512"
+
+  collect:
+    output_path_template: "{model_path}/irgs"
