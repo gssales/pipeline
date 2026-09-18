@@ -5,6 +5,7 @@ method:
   python: "/mnt/conda/gsir/bin/python"
   multi_stage: true
   evaluate_normal_mae: true
+  saves_as_checkpoint: true
 
 stages:
   training:
