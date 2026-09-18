@@ -169,14 +169,15 @@ def rendering(args, eval_dir, scene, dataset, params, repeat=0):
   print("Starting rendering for scene:", scene)
 
   python = params["method"]["python"]
-  rendering_script = params["stages"].get("rendering", {}).get("script", "train.py")
+  rendering_params = params["stages"].get("rendering", {})
+  rendering_script = rendering_params.get("script", "train.py")
   rendering_args = build_stage_args(params["stages"], "rendering", dataset, scene)
   if dataset.get("has_normals", False) and params["method"].get("evaluate_normal_mae", False):
     rendering_args += " --save_normals"
 
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
-  if "output_path_template" in params["stages"]["rendering"]:
-    template = params["stages"]["rendering"]["output_path_template"]
+  if "output_path_template" in rendering_params:
+    template = rendering_params["output_path_template"]
     output_path = Path(template.format(model_path=output_path))
 
   rendering_args = rendering_args.format(model_path=output_path)
@@ -208,12 +209,13 @@ def metrics_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
   print("Starting metrics evaluation for scene:", scene)
   
   python = params["method"]["python"]
-  metrics_script = params["stages"].get("metrics_evaluation", {}).get("script", "metrics.py")
+  metrics_params = params["stages"].get("metrics_evaluation", {})
+  metrics_script = metrics_params.get("script", "metrics.py")
   metrics_args = build_stage_args(params["stages"], "metrics_evaluation")
   
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
-  if "output_path_template" in params["stages"]["metrics_evaluation"]:
-    template = params["stages"]["metrics_evaluation"]["output_path_template"]
+  if "output_path_template" in metrics_params:
+    template = metrics_params["output_path_template"]
     output_path = Path(template.format(model_path=output_path))
 
   saves_as_checkpoint = params["method"].get("saves_as_checkpoint", False)
@@ -242,12 +244,13 @@ def mae_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
     return
 
   python = params["method"]["python"]
-  mae_script = params["stages"].get("mae_evaluation", {}).get("script", "eval_mae.py")
+  mae_params = params["stages"].get("mae_evaluation", {})
+  mae_script = params.get("script", "eval_mae.py")
   mae_args = build_stage_args(params["stages"], "mae_evaluation")
   
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
-  if "output_path_template" in params["stages"]["mae_evaluation"]:
-    template = params["stages"]["mae_evaluation"]["output_path_template"]
+  if "output_path_template" in mae_params:
+    template = mae_params["output_path_template"]
     output_path = Path(template.format(model_path=output_path))
 
   saves_as_checkpoint = params["method"].get("saves_as_checkpoint", False)
@@ -273,12 +276,13 @@ def mae_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
 def fps_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
   print("Starting FPS evaluation for scene:", scene)
   python = params["method"]["python"]
-  fps_script = params["stages"].get("fps_evaluation", {}).get("script", "eval_fps.py")
+  fps_params = params["stages"].get("fps_evaluation", {})
+  fps_script = fps_params.get("script", "eval_fps.py")
   fps_args = build_stage_args(params["stages"], "fps_evaluation", dataset, scene)
   
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
-  if "output_path_template" in params["stages"]["fps_evaluation"]:
-    template = params["stages"]["fps_evaluation"]["output_path_template"]
+  if "output_path_template" in fps_params:
+    template = fps_params["output_path_template"]
     output_path = Path(template.format(model_path=output_path))
 
   fps_args = fps_args.format(model_path=output_path)
@@ -306,17 +310,18 @@ def fps_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
 def render_videos(args, eval_dir, scene, dataset, params, repeat=0):
   print("Starting render videos for scene:", scene)
   python = params["method"]["python"]
-  video_script = params["stages"]["render_videos"].get("script", "render-videos.py")
+  video_params = params["stages"].get("render_videos", {})
+  video_script = video_params.get("script", "render-videos.py")
   video_args = build_stage_args(params["stages"], "render_videos", dataset, scene)
   
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
-  if "output_path_template" in params["stages"]["render_videos"]:
-    template = params["stages"]["render_videos"]["output_path_template"]
+  if "output_path_template" in video_params:
+    template = video_params["output_path_template"]
     output_path = Path(template.format(model_path=output_path))
 
   saves_as_checkpoint = params["method"].get("saves_as_checkpoint", False)
   if not saves_as_checkpoint and not (output_path / "point_cloud").exists() and not args.dry_run:
-    print(f"Output for {scene.parent.name + '/' + scene.name} does not exist. Skipping FPS evaluation.")
+    print(f"Output for {scene.parent.name + '/' + scene.name} does not exist. Skipping video rendering.")
     return
 
   working_dir = params["method"]["working_directory"]
@@ -337,7 +342,7 @@ def render_videos(args, eval_dir, scene, dataset, params, repeat=0):
 def collect_results(args, eval_dir, scene, dataset, params, repeat=0):
   print("Collecting results for scene:", scene)
   model_path = get_scene_output_path(args, eval_dir, scene, repeat)
-  if "output_path_template" in params["stages"]["collect_results"]:
+  if "output_path_template" in params["stages"].get("collect_results", {}):
     template = params["stages"]["collect_results"]["output_path_template"]
     model_path = Path(template.format(model_path=model_path))
 
