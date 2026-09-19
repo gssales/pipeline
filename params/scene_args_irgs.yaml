@@ -18,7 +18,6 @@ stages:
       args:
         base: " --iterations 20000 --start_checkpoint_refgs {model_path}/chkpnt50000.pth --lambda_base_color_smooth 2 --lambda_roughness_smooth 2 --diffuse_sample_num 256 --envmap_cubemap_lr 0.01 --lambda_light_smooth 0.0005 --init_roughness_value 0.6 --lambda_light 0.1 --train_ray"
 
-
   rendering:
     script: render.py
     output_path_template: "{model_path}/irgs"
@@ -30,6 +29,11 @@ stages:
     output_path_template: "{model_path}/irgs"
     args:
       base: " --diffuse_sample_num 512"
+      
+  mae_evaluation:
+    script: eval_mae.py
+    output_path_template: "{model_path}/irgs"
+    args: ""
 
   collect:
     output_path_template: "{model_path}/irgs"
