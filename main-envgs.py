@@ -111,7 +111,7 @@ def pipeline(args):
       print("No valid datasets found for the provided dataset IDs.")
       exit(1)
 
-  eval_dir = Path(args.output_dir) if args.output_dir else Path(params["base_path"], "eval_" + time.strftime("%Y%m%d-%H%M%S"))
+  eval_dir = "" #Path(args.output_dir) if args.output_dir else Path(params["base_path"], "eval_" + time.strftime("%Y%m%d-%H%M%S"))
 
   stages = args.stages if args.stages else ["training"]
 
