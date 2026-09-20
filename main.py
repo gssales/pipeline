@@ -175,12 +175,12 @@ def rendering(args, eval_dir, scene, dataset, params, repeat=0):
   if dataset.get("has_normals", False) and params["method"].get("evaluate_normal_mae", False):
     rendering_args += " --save_normals"
 
+  rendering_args = rendering_args.format(model_path=output_path)
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
   if "output_path_template" in rendering_params:
     template = rendering_params["output_path_template"]
     output_path = Path(template.format(model_path=output_path))
 
-  rendering_args = rendering_args.format(model_path=output_path)
 
   saves_as_checkpoint = params["method"].get("saves_as_checkpoint", False)
   if not saves_as_checkpoint and not (output_path / "point_cloud").exists() and not args.dry_run:
@@ -281,11 +281,10 @@ def fps_evaluation(args, eval_dir, scene, dataset, params, repeat=0):
   fps_args = build_stage_args(params["stages"], "fps_evaluation", dataset, scene)
   
   output_path = get_scene_output_path(args, eval_dir, scene, repeat)
+  fps_args = fps_args.format(model_path=output_path)
   if "output_path_template" in fps_params:
     template = fps_params["output_path_template"]
     output_path = Path(template.format(model_path=output_path))
-
-  fps_args = fps_args.format(model_path=output_path)
   
   saves_as_checkpoint = params["method"].get("saves_as_checkpoint", False)
   if not saves_as_checkpoint and not (output_path / "point_cloud").exists() and not args.dry_run:

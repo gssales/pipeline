@@ -44,7 +44,7 @@ stages:
     script: eval_fps.py
     output_path_template: "{model_path}/stage2"
     args:
-      base: " --pbr -t render_ref_pbr"
+      base: " -t render_ref --ref_map --compute_with_prt"
       real: " --checkpoint {model_path}/stage2/checkpoint/chkpnt40000.pth --occlusion_path {model_path}/stage1/checkpoint/occlusion_volumes.pth"
       synthetic: " --checkpoint {model_path}/stage2/checkpoint/chkpnt40000.pth --occlusion_path {model_path}/stage1/checkpoint/occlusion_volumes.pth --metallic"
 
