@@ -2,7 +2,7 @@ method:
   id: "rtr_gs"
   output_path: "/mnt/output/rtr_gs"
   working_directory: "/workspace/RTR-GS"
-  python: "/mnt/conda/rtr_gs/bin/python"
+  python: "/mnt/conda/rtr-gs/bin/python"
   multi_stage: true
   evaluate_normal_mae: true
   
