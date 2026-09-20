@@ -27,11 +27,11 @@ def parse_eval_txt(fps_path: Path):
     ssim_pbr_value = ""
     lpips_pbr_value = ""
     for line in lines:
-        if line.lower().startswith("psnr:"):
+        if line.lower().startswith("psnr:") or line.lower().startswith("psnr_radiance:"):
             psnr_value = line.split(":", 1)[1].strip()
-        elif line.lower().startswith("ssim:"):
+        elif line.lower().startswith("ssim:") or line.lower().startswith("ssim_radiance:"):
             ssim_value = line.split(":", 1)[1].strip()
-        elif line.lower().startswith("lpips:"):
+        elif line.lower().startswith("lpips:") or line.lower().startswith("lpips_radiance:"):
             lpips_value = line.split(":", 1)[1].strip()
         elif line.lower().startswith("psnr_pbr:"):
             psnr_pbr_value = line.split(":", 1)[1].strip()
@@ -153,7 +153,10 @@ def main():
 
     for scene_dir in scene_dirs:
         fps_path = scene_dir / "fps.txt"
-        eval_path = scene_dir / "stage2" / "eval" / "eval.txt"
+        if (scene_dir / "stage2" / "metrics_eval_test.txt").exists():
+            eval_path = scene_dir / "stage2" / "metrics_eval_test.txt"
+        else:
+            eval_path = scene_dir / "stage2" / "eval" / "eval.txt"
 
         fps_value = ""
         count_value = ""

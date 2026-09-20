@@ -30,12 +30,10 @@ stages:
         synthetic: " --lambda_mask_entropy 0.1 --lambda_reflect_strength_equal_metallic 0.1 --skip_eval --metallic"
 
   rendering:
-    script: render.py
+    script: render_and_eval.py
     output_path_template: "{model_path}/stage2"
     args:
-      base: " --eval --skip_train --pbr"
-      real: " --checkpoint {model_path}/stage2/checkpoint/chkpnt40000.pth --occlusion_path {model_path}/stage1/checkpoint/occlusion_volumes.pth"
-      synthetic: " --checkpoint {model_path}/stage2/checkpoint/chkpnt40000.pth --occlusion_path {model_path}/stage1/checkpoint/occlusion_volumes.pth --metallic"
+      base: " --checkpoint {model_path}/stage2/checkpoint/chkpnt40000.pth --occlusion_path {model_path}/stage1/checkpoint/occlusion_volumes.pth --ref_map --compute_with_prt --metallic -t render_ref_pbr"
 
   mae_evaluation:
     script: eval_mae.py
