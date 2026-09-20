@@ -1,5 +1,11 @@
-base_path: "/mnt/output/envgs"
-conda_env: "/mnt/conda/envgs/bin"
-script_path: "/workspace/EnvGS"
-mae_eval_datasets:
-  - "shiny_blender"
+method: 
+  id: "envgs"
+  output_path: "/mnt/output/envgs"
+  working_directory: "/workspace/EnvGS"
+  python: "/mnt/conda/envgs/bin/python"
+  conda_env: "/mnt/conda/envgs/bin"
+  evaluate_normal_mae: true
+  
+stages:
+  training:
+    command: "/mnt/conda/envgs/bin/evc-train"
