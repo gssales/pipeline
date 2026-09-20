@@ -35,5 +35,3 @@ stages:
     output_path_template: "{model_path}/irgs"
     args: ""
 
-  collect:
-    output_path_template: "{model_path}/irgs"

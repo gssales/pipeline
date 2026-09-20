@@ -32,13 +32,31 @@ def pick_best_key(results: dict):
 
 def parse_results_json(results_path: Path):
   if not results_path.exists():
-    raise FileNotFoundError(f"Results file not found: {results_path}")
+    # raise FileNotFoundError(f"Results file not found: {results_path}")
+    print(f"Warning: Results file not found: {results_path}. Returning empty results.")
+    return {}
   with open(results_path, "r", encoding="utf-8") as f:
     results = json.load(f)
-    best_key = pick_best_key(results)
-    if best_key is None or best_key not in results:
-      raise ValueError(f"Results file is empty or invalid: {results_path}")
-    return results[best_key]
+    has_method_key = True
+    for key in results.keys():
+      if "psnr" in key.lower() or "ssim" in key.lower() or "lpips" in key.lower():
+        has_method_key = False
+        break
+    if has_method_key:
+      best_key = pick_best_key(results)
+      if best_key is None or best_key not in results:
+        raise ValueError(f"Results file is empty or invalid: {results_path}")
+      return results[best_key]
+    else:
+      parsed_results = {}
+      for key in results.keys():
+        if "psnr" in key.lower():
+          parsed_results["PSNR"] = results[key]
+        elif "ssim" in key.lower():
+          parsed_results["SSIM"] = results[key]
+        elif "lpips" in key.lower():
+          parsed_results["LPIPS"] = results[key]
+      return parsed_results
 
 
 def parse_fps_txt(fps_path: Path):
@@ -49,7 +67,9 @@ def parse_fps_txt(fps_path: Path):
   Returns (fps_str, count_str) keeping original formatting as strings.
   """
   if not fps_path.exists():
-    raise FileNotFoundError(f"FPS file not found: {fps_path}")
+    # raise FileNotFoundError(f"FPS file not found: {fps_path}")
+    print(f"Warning: FPS file not found: {fps_path}. Returning empty values.")
+    return "", ""
   fps_value = ""
   count_value = ""
   with open(fps_path, "r", encoding="utf-8") as fp:
@@ -70,7 +90,9 @@ def parse_fps_txt(fps_path: Path):
 
 def parse_usage(usage_path: Path):
   if not usage_path.exists():
-    raise FileNotFoundError(f"Usage file not found: {usage_path}")
+    # raise FileNotFoundError(f"Usage file not found: {usage_path}")
+    print(f"Warning: Usage file not found: {usage_path}. Returning zeros.")
+    return 0.0, 0.0, 0.0, 0.0
 
   peak_ram, peak_vram = 0.0, 0.0
   mean_ram, mean_vram = 0.0, 0.0
@@ -107,7 +129,9 @@ def read_latest_training_time(model_path: Path) -> str:
     training_time_path = model_path / "training_time.txt"
 
   if not training_time_path.exists():
-    raise FileNotFoundError(f"No training time file found in {model_path}")
+    # raise FileNotFoundError(f"No training time file found in {model_path}")
+    print(f"Warning: No training time file found in {model_path}. Returning empty string.")
+    return ""
 
   with training_time_path.open("r", encoding="utf-8") as file:
     return file.readline().strip()
@@ -121,10 +145,12 @@ def read_latest_stage_time(
   )
 
   if not time_files:
-    raise FileNotFoundError(
-      f"No training time file found for stage "
-      f"'{stage}' in {model_path}"
-    )
+    # raise FileNotFoundError(
+    #   f"No training time file found for stage "
+    #   f"'{stage}' in {model_path}"
+    # )
+    print(f"Warning: No training time file found for stage '{stage}' in {model_path}. Returning 0.0.")
+    return 0.0
 
   latest_file = time_files[-1]
 
