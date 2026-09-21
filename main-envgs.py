@@ -21,15 +21,15 @@ import shlex
 
 from monitor_utils import get_vram_procs, monitor
 from process_utils import ProcessManager
+from utils.context_utils import cd
 from utils.parser_utils import load_datasets, load_scene_args
 
 
 ################
 #   TRAINING   #
 ################
-def training(args, eval_dir, scene, datasets, parameters):
+def training(args, dataset_scene, scene, datasets, parameters):
   print("Starting training for scene:", scene)
-  dataset_scene = scene.parent.name + "_" + scene.name + "_" + time.strftime("%Y%m%d-%H%M%S")
   train_command = f"{parameters['conda_env']}/evc-train -c configs/exps/envgs/{scene.parent.name}/envgs_{scene.name}.yaml exp_name={dataset_scene}"
 
   output_path = os.path.join('/mnt/output/envgs/record', dataset_scene)
@@ -64,8 +64,28 @@ def training(args, eval_dir, scene, datasets, parameters):
 #################
 #   RENDERING   #
 #################
-def rendering(args, eval_dir, scene, datasets, parameters):
-  pass
+def rendering(args, dataset_scene, scene, datasets, params):
+  print("Starting rendering for scene:", scene)
+
+  python = params["method"]["python"]
+  rendering_script = "eval.py"
+  
+  working_dir = params["method"]["working_directory"]
+  config = f"configs/exps/envgs/{scene.parent.name}/envgs_{scene.name}.yaml"
+  checkpoint = f"{dataset_scene}/latest.pt"
+  model_path = f"/mnt/output/envgs/record/{dataset_scene}/"
+  render_cmd = f"{python} {rendering_script} --config {config} --checkpoint {checkpoint} --model-path {model_path} --mode render --normal-space world"
+  
+  if args.dry_run:
+    print("Dry run enabled. Command that would be executed:")
+    print(render_cmd)
+    return
+  
+  with open(os.path.join(model_path, "commands.sh"), 'a') as file:
+    file.write(render_cmd + "\n")
+
+  with cd(working_dir):
+    os.system(render_cmd)
 
 
 
@@ -79,8 +99,28 @@ def mae_evaluation(args, eval_dir, scene, parameters):
 ######################
 #   FPS EVALUATION   #
 ######################
-def fps_evaluation(args, eval_dir, scene, datasets, parameters):
-  pass
+def fps_evaluation(args, dataset_scene, scene, datasets, params):
+  print("Starting rendering for scene:", scene)
+  
+  python = params["method"]["python"]
+  fps_script = "eval.py"
+  
+  working_dir = params["method"]["working_directory"]
+  config = f"configs/exps/envgs/{scene.parent.name}/envgs_{scene.name}.yaml"
+  checkpoint = f"{dataset_scene}/latest.pt"
+  model_path = f"/mnt/output/envgs/record/{dataset_scene}/"
+  fps_cmd = f"{python} {fps_script} --config {config} --checkpoint {checkpoint} --model-path {model_path} --mode fps --repeats 100"
+  
+  if args.dry_run:
+    print("Dry run enabled. Command that would be executed:")
+    print(fps_cmd)
+    return
+  
+  with open(os.path.join(model_path, "commands.sh"), 'a') as file:
+    file.write(fps_cmd + "\n")
+
+  with cd(working_dir):
+    os.system(fps_cmd)
 
 
 ##########################
@@ -125,6 +165,8 @@ def pipeline(args):
 
     scenes = dataset["scenes"]
     print(f"Evaluating dataset: {dataset_id} with {len(scenes)} scenes.")
+    
+    dataset_scene = scene.parent.name + "_" + scene.name + "_" + time.strftime("%Y%m%d-%H%M%S")
 
     if args.filter_scenes_by:
       scenes = [scene for scene in scenes if scene.name in args.filter_scenes_by]
@@ -132,13 +174,13 @@ def pipeline(args):
 
     for scene in scenes:
       if "training" in stages:
-        training(args, eval_dir, scene, datasets, params)
+        training(args, dataset_scene, scene, datasets, params)
 
-      # if not args.skip_rendering:
-      #   rendering(args, eval_dir, scene, datasets, params)
+      if not args.skip_rendering:
+        rendering(args, dataset_scene, scene, datasets, params)
       
-      # if not args.skip_fps:
-      #   fps_evaluation(args, eval_dir, scene, datasets, params)
+      if not args.skip_fps:
+        fps_evaluation(args, dataset_scene, scene, datasets, params)
 
       # if not args.skip_metrics:
       #   metrics_evaluation(args, eval_dir, scene, params)
