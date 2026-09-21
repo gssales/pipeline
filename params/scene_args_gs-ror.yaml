@@ -13,3 +13,7 @@ stages:
   rendering:
     script: render.py
     args: " --render_mode defer --skip_train --env_mode envmap"
+
+  metrics:
+    script: eval/metrics.py
+    args: ""
